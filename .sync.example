@@ -1,0 +1,18 @@
+# Mintis Sync Configuration
+# Copy this file to .sync in your project root and customize
+
+# Default options (can be overridden via command line)
+SKIP_DB=false
+SKIP_ASSETS=false
+LOCAL=false
+
+# Optional: Slack webhook for notifications
+# SLACK_WEBHOOK_URL=https://hooks.slack.com/services/xxx/xxx/xxx
+# SLACK_CHANNEL=#site
+
+# Optional: Custom rsync options
+# RSYNC_OPTIONS="-az --progress --exclude=.DS_Store"
+
+# Optional: Backup database before sync
+# BACKUP_DB=true
+# BACKUP_DIR="$PROJECT_ROOT/backups"

@@ -1,0 +1,9 @@
+.DS_Store
+.idea/
+*.log
+.env
+wp-cli.yml
+.sync
+backups/
+*.sql
+*.sql.gz
