@@ -1,6 +1,24 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+## [1.4.0] - 2026-02-11
+
+### Added
+- **Database backup before sync** — timestamped `.sql` backup saved to `backups/` before resetting target DB
+- **`set -eo pipefail`** — script now stops immediately on errors instead of silently continuing
+- **`--dry-run` mode** — preview what would be synced without making changes
+- **Production safety check** — requires typing 'production' to confirm when syncing TO production
+- **`wp_from_cmd` / `wp_to_cmd` helpers** — transparent local vs remote WP-CLI command routing
+
+### Fixed
+- Removed duplicate `bold`/`normal` variable definitions (now uses `BOLD`/`NORMAL` consistently)
+- Database import failure now shows backup file location for recovery
+
+### Removed
+- Unused `spinner()` function (dead code)
+- 3x copy-pasted DB sync logic — replaced with single `sync_database()` function
+
 ## [1.3.0] - 2025-01-XX
 
 ### Added (Inspired by Trellis)
