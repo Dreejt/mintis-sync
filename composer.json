@@ -1,0 +1,19 @@
+{
+  "name": "dreejt/mintis-sync",
+  "description": "Sync script for Bedrock-based WordPress projects",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Tjeerd",
+      "email": "tjeerd@mintis.nl"
+    }
+  ],
+  "require": {
+    "php": ">=8.1"
+  },
+  "bin": [
+    "sync.sh",
+    "setup-wp-cli.php"
+  ]
+}

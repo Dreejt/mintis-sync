@@ -2,7 +2,7 @@
 set -eo pipefail
 
 # Syncing Trellis & Bedrock-based WordPress environments with WP-CLI aliases
-# Version 1.4.0
+# Version 1.5.0
 # Copyright (c) Ben Word | modification by Tjeerd
 
 # Color definitions (inspired by Trellis)
@@ -26,9 +26,18 @@ error() { echo -e "${RED}[${ERROR}]${NC} $1" >&2; }
 warning() { echo -e "${YELLOW}[${WARNING}]${NC} $1"; }
 info() { echo -e "${BLUE}[${INFO}]${NC} $1"; }
 
-# Get script directory and project root
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+# Get project root - works both standalone (scripts/) and as composer bin (vendor/bin/)
+if [ -L "${BASH_SOURCE[0]}" ]; then
+    # Running as symlink from vendor/bin/ - resolve real path
+    REAL_SCRIPT="$(readlink "${BASH_SOURCE[0]}")"
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd "$(dirname "$REAL_SCRIPT")" && pwd)"
+    # Go up from vendor/dreejt/mintis-sync/ to project root
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+else
+    # Running directly from scripts/ folder
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+fi
 
 # Load optional config file (.sync)
 if [ -f "$PROJECT_ROOT/.sync" ]; then
