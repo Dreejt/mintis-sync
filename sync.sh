@@ -26,16 +26,16 @@ error() { echo -e "${RED}[${ERROR}]${NC} $1" >&2; }
 warning() { echo -e "${YELLOW}[${WARNING}]${NC} $1"; }
 info() { echo -e "${BLUE}[${INFO}]${NC} $1"; }
 
-# Get project root - works both standalone (scripts/) and as composer bin (vendor/bin/)
-if [ -L "${BASH_SOURCE[0]}" ]; then
-    # Running as symlink from vendor/bin/ - resolve real path
-    REAL_SCRIPT="$(readlink "${BASH_SOURCE[0]}")"
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd "$(dirname "$REAL_SCRIPT")" && pwd)"
-    # Go up from vendor/dreejt/mintis-sync/ to project root
+# Get project root - works from scripts/, vendor/bin/, or vendor/dreejt/mintis-sync/
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Detect if running from inside vendor/ (Composer package)
+if [[ "$SCRIPT_DIR" == */vendor/dreejt/mintis-sync ]]; then
     PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+elif [[ "$SCRIPT_DIR" == */vendor/bin ]]; then
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 else
-    # Running directly from scripts/ folder
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # Running directly from scripts/ or project root
     PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 fi
 
