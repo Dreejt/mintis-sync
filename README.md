@@ -44,7 +44,7 @@ SERVER_BASE_PATH='/home/ploi'
 
 # Domeinen
 PROD_DOMAIN='www.jouwsite.nl'
-STAGING_DOMAIN='test.jouwsite.nl'
+STAGING_DOMAIN='staging.jouwsite.nl'
 DEV_DOMAIN='jouwsite.test'
 ```
 
