@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.1] - 2026-02-16
+
+### Fixed
+- Path resolution for Composer wrapper exec (not a symlink but a wrapper script)
+- Detect vendor path by checking SCRIPT_DIR pattern instead of symlink check
+
+## [1.5.0] - 2026-02-16
+
+### Added
+- **Composer package support** — install via `composer require dreejt/mintis-sync`
+- `composer.json` with bin entries for `sync.sh` and `setup-wp-cli.php`
+- Smart path resolution: works from `scripts/`, `vendor/bin/`, and `vendor/dreejt/mintis-sync/`
+
+### Changed
+- README updated for Composer-first workflow
+- Version bumped to 1.5.0
+
 ## [1.4.0] - 2026-02-11
 
 ### Added
