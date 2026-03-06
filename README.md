@@ -61,40 +61,72 @@ php vendor/dreejt/mintis-sync/setup-wp-cli.php
 
 ## Gebruik
 
-### Via Composer (als script geconfigureerd)
+### Vrije syntax
 
 ```bash
-composer sync production development       # Production → lokaal
-composer sync staging development          # Staging → lokaal
-composer sync development staging          # Lokaal → staging
+composer sync production development
+composer sync staging development
+composer sync development staging
+composer sync development production
+composer sync production staging
+composer sync staging production
 ```
 
-### Direct
+### Shortcuts
 
 ```bash
-vendor/bin/sync.sh production development
+composer sync:production-development   # ⬇️  veilig
+composer sync:staging-development      # ⬇️  veilig
+composer sync:development-staging      # ⬆️  veilig
+composer sync:development-production   # ⬆️  ⚠️ vraagt domeinnaam ter bevestiging
+composer sync:production-staging       # ↔️  veilig
+composer sync:staging-production       # ↔️  ⚠️ vraagt domeinnaam ter bevestiging
 ```
 
 ### Opties
 
 ```bash
---skip-db         # Alleen uploads syncen
---skip-assets     # Alleen database syncen
---dry-run         # Preview zonder wijzigingen
+composer sync production development -- --skip-db       # Alleen uploads
+composer sync production development -- --skip-assets   # Alleen database
+composer sync production development -- --dry-run       # Preview, geen wijzigingen
 ```
 
 ### Voorbeelden
 
 ```bash
-# Alleen database van productie naar lokaal
-composer sync production development --skip-assets
+# Production naar lokaal (alleen database)
+composer sync production development -- --skip-assets
 
-# Alleen uploads van staging naar lokaal
-composer sync staging development --skip-db
+# Staging naar lokaal (alleen uploads)
+composer sync staging development -- --skip-db
 
 # Preview wat er zou gebeuren
-composer sync production development --dry-run
+composer sync production development -- --dry-run
+
+# Production naar staging (bijv. na hotfix)
+composer sync production staging
+
+# Lokaal naar staging pushen
+composer sync development staging
 ```
+
+### Beveiliging bij sync naar production
+
+Bij elke sync **naar** production verschijnt een extra scherm:
+
+```
+⛔  WAARSCHUWING: je staat op het punt PRODUCTIE te overschrijven
+
+  Van:  https://staging.jouwsite.nl
+  Naar: https://www.jouwsite.nl
+
+  Dit vervangt de live database en uploads. Dit is onomkeerbaar.
+
+  Typ de productie-domeinnaam om te bevestigen: www.jouwsite.nl
+  >
+```
+
+Je moet de exacte domeinnaam typen — dat is per ongeluk niet goed in te vullen.
 
 ## Veiligheid
 

@@ -295,17 +295,27 @@ echo
 echo "Would you really like to "
 echo $DB_MESSAGE
 echo $ASSETS_MESSAGE
-read -r -p " [y/N] " response
+read -r -p " [y/N] " response < /dev/tty
 
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
   # Extra confirmation when syncing TO production
   if [[ "$TO" == "production" ]]; then
+    if [[ -z "$PROD_DOMAIN" ]]; then
+      error "PROD_DOMAIN is niet ingesteld in .env — sync naar production geblokkeerd"
+      exit 1
+    fi
     echo
-    warning "You are about to overwrite the PRODUCTION database!"
-    echo -e "  ${RED}This will replace ${BOLD}${PRODSITE}${NORMAL}${RED} with data from ${FROM}${NC}"
-    read -r -p "  Type 'production' to confirm: " confirm_prod
-    if [[ "$confirm_prod" != "production" ]]; then
-      error "Aborted. Production was not confirmed."
+    echo -e "  ${RED}${BOLD}⛔  WAARSCHUWING: je staat op het punt PRODUCTIE te overschrijven${NORMAL}${NC}"
+    echo
+    echo -e "  ${BOLD}Van:${NORMAL}  $FROMSITE"
+    echo -e "  ${RED}${BOLD}Naar: $TOSITE${NORMAL}${NC}"
+    echo
+    echo -e "  ${YELLOW}Dit vervangt de live database en uploads. Dit is onomkeerbaar.${NC}"
+    echo
+    echo -e "  Typ de productie-domeinnaam om te bevestigen: ${BOLD}${PROD_DOMAIN}${NORMAL}"
+    read -r -p "  > " confirm_prod < /dev/tty
+    if [[ "$confirm_prod" != "$PROD_DOMAIN" ]]; then
+      error "Aborted. Domeinnaam kwam niet overeen."
       exit 1
     fi
   fi

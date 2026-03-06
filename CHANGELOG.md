@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.6] - 2026-03-06
+
+### Security
+- Alle `read` prompts lezen nu van `/dev/tty` — piping van stdin kan bevestigingen niet meer omzeilen (`echo "y" | composer sync staging production` werkt niet meer)
+- Sync naar production geblokkeerd als `PROD_DOMAIN` leeg of niet ingesteld is in `.env`
+
+## [1.5.5] - 2026-03-06
+
+### Changed
+- Composer shortcuts hernoemd naar expliciete richtingsnamen (`sync:production-development` etc.)
+- `composer sync production development` werkt nu direct als vrije syntax
+- README: gebruik-sectie herschreven met vrije syntax en shortcuts
+
+## [1.5.4] - 2026-03-06
+
+### Added
+- Alle 6 sync-richtingen als composer scripts (`sync:up-prod`, `sync:prod-to-stage`, `sync:stage-to-prod`) in mintis-26 en klaasjangeertsema
+
+### Changed
+- Productie-beveiliging: vereist nu het typen van de exacte domeinnaam (`PROD_DOMAIN`) i.p.v. het generieke woord 'production' — onmogelijk per ongeluk te bevestigen
+- README: gebruik-sectie volledig herschreven met alle 6 richtingen en uitleg beveiliging
+
+## [1.5.3] - 2026-03-06
+
+### Changed
+- README: alle zes sync-richtingen gedocumenteerd met overzichtstabel en voorbeelden
+
 ## [1.5.2] - 2026-03-06
 
 ### Added
