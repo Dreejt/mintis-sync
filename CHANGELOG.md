@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.2] - 2026-03-06
+
+### Added
+- **Auto-update check** — waarschuwing bij verouderde versie (max 1× per dag, gecached in `.sync-update-check`)
+- **`CLAUDE.md`** — context voor AI-assistenten met release-workflow en conventies
+- **GitHub Action** (`.github/workflows/release.yml`) — automatische git tag op basis van versie in `CHANGELOG.md`; geen handmatige tags meer nodig
+
+### Changed
+- `SCRIPT_VERSION` wordt nu automatisch gelezen uit `vendor/composer/installed.json` — nooit meer handmatig bijwerken
+
+### Fixed
+- Backup-fout blokkeert nu de sync (was: waarschuwing en doorgaan)
+- Betere foutmelding wanneer WP-CLI niet aanwezig is op de remote server (`command not found` wordt nu herkend)
+
 ## [1.5.1] - 2026-02-16
 
 ### Fixed

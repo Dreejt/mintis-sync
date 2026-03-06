@@ -7,12 +7,13 @@ Sync script voor Bedrock WordPress projecten. Database en uploads synchroniseren
 - Database sync met automatische search-replace
 - Assets (uploads) sync via rsync
 - Multisite ondersteuning (wp_blogs & wp_site)
-- Automatische database backup vóór sync
+- Automatische database backup vóór sync (sync stopt bij mislukken backup)
 - Dry-run modus (`--dry-run`)
 - Productie-beveiliging (bevestiging vereist)
 - Kleurgecodeerde feedback
-- Pre-flight validatie (WP-CLI, rsync, .env)
+- Pre-flight validatie (WP-CLI lokaal én remote, rsync, .env)
 - Auto-generatie van wp-cli.yml vanuit .env
+- Automatische update-melding bij nieuwe versie
 
 ## Installatie
 
@@ -97,9 +98,9 @@ composer sync production development --dry-run
 
 ## Veiligheid
 
-- **Database backup**: voor elke sync wordt automatisch een timestamped backup gemaakt in `backups/`
+- **Database backup**: voor elke sync wordt automatisch een timestamped backup gemaakt in `backups/` — sync stopt als de backup mislukt
 - **Productie-beveiliging**: bij sync naar productie moet je 'production' typen ter bevestiging
-- **Pre-flight checks**: WP-CLI, rsync, SSH-verbinding en .env variabelen worden gevalideerd
+- **Pre-flight checks**: WP-CLI (lokaal én remote), rsync, SSH-verbinding en .env variabelen worden gevalideerd
 
 ## Vereisten
 
@@ -107,6 +108,15 @@ composer sync production development --dry-run
 - WP-CLI (lokaal + remote)
 - rsync
 - SSH-toegang tot servers
+
+## Release workflow (voor contributors)
+
+1. Voeg bovenaan `CHANGELOG.md` een nieuw versieblok toe
+2. Commit en push naar `main`
+3. GitHub Action maakt automatisch de git tag aan
+4. Packagist pikt de nieuwe versie op
+
+Zie [CLAUDE.md](CLAUDE.md) voor meer context over het project.
 
 ## Changelog
 
