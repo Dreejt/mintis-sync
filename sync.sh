@@ -2,8 +2,17 @@
 set -eo pipefail
 
 # Syncing Trellis & Bedrock-based WordPress environments with WP-CLI aliases
-# Version 1.5.0
 # Copyright (c) Ben Word | modification by Tjeerd
+
+# Version is read from vendor/composer/installed.json — no need to update manually
+SCRIPT_VERSION="dev"
+if [[ "$SCRIPT_DIR" == */vendor/* ]]; then
+    _installed_json="$(cd "$SCRIPT_DIR" && cd "$(git rev-parse --show-toplevel 2>/dev/null || echo "../../..")" && pwd)/vendor/composer/installed.json"
+    if [[ -f "$_installed_json" ]]; then
+        _ver=$(grep -A2 '"name": "dreejt/mintis-sync"' "$_installed_json" | grep '"version"' | head -1 | sed 's/.*": "//;s/".*//' | sed 's/^v//')
+        [[ -n "$_ver" ]] && SCRIPT_VERSION="$_ver"
+    fi
+fi
 
 # Color definitions (inspired by Trellis)
 RED='\033[0;31m'
@@ -55,6 +64,42 @@ else
     echo "  - SERVER_USER, SERVER_IP, SERVER_BASE_PATH"
     exit 1
 fi
+
+# Check if a newer version of mintis-sync is available on GitHub (max once per day)
+check_for_updates() {
+    # Only check when running via Composer (not during development of the package itself)
+    if [[ "$SCRIPT_DIR" != */vendor/* ]]; then
+        return
+    fi
+
+    local cache_file="$PROJECT_ROOT/.sync-update-check"
+    local today
+    today=$(date +%Y-%m-%d)
+
+    # Skip if already checked today
+    if [[ -f "$cache_file" ]] && grep -q "^$today$" "$cache_file" 2>/dev/null; then
+        return
+    fi
+
+    local latest
+    latest=$(curl -sf --max-time 3 "https://api.github.com/repos/dreejt/mintis-sync/tags" 2>/dev/null \
+        | grep '"name"' | head -1 | sed 's/.*"name": "\(.*\)".*/\1/' | sed 's/^v//')
+
+    if [[ -z "$latest" ]]; then
+        return  # GitHub unreachable, skip silently
+    fi
+
+    echo "$today" > "$cache_file"
+
+    # Check if latest > SCRIPT_VERSION using sort -V
+    if [[ "$(printf '%s\n' "$SCRIPT_VERSION" "$latest" | sort -V | tail -1)" != "$SCRIPT_VERSION" ]]; then
+        warning "mintis-sync $latest is available (you have $SCRIPT_VERSION)"
+        info "Update with: composer update dreejt/mintis-sync"
+        echo
+    fi
+}
+
+check_for_updates
 
 # Pre-flight validation checks
 validate_requirements() {
