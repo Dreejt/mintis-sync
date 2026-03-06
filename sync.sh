@@ -129,7 +129,9 @@ sync_database() {
         fi
     else
         rm -f "$backup_file"
-        warning "Could not backup target database (new install?) — continuing"
+        error "Backup of $TO database failed — sync aborted"
+        info "Fix the backup issue first, or use --skip-db to skip the database sync"
+        exit 1
     fi
 
     # Reset target and import source database
@@ -288,7 +290,11 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     else
       AVAILFROM=$(wp "@$FROM" option get home 2>&1) || true
     fi
-    if [[ $AVAILFROM == *"Error"* ]]; then
+    if [[ $AVAILFROM == *"command not found"* ]]; then
+      error "WP-CLI is not installed on the $FROM server"
+      info "Install WP-CLI on the remote server: https://wp-cli.org/#installing"
+      exit 1
+    elif [[ $AVAILFROM == *"Error"* ]]; then
       error "Unable to connect to $FROM"
       info "Troubleshooting tips:"
       echo "  - Check if wp-cli.yml is configured correctly"
@@ -309,7 +315,11 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
       AVAILTO=$(wp "@$TO" option get home 2>&1) || true
     fi
 
-    if [[ $AVAILTO == *"Error"* ]]; then
+    if [[ $AVAILTO == *"command not found"* ]]; then
+      error "WP-CLI is not installed on the $TO server"
+      info "Install WP-CLI on the remote server: https://wp-cli.org/#installing"
+      exit 1
+    elif [[ $AVAILTO == *"Error"* ]]; then
       warning "Unable to fully connect to $TO (this is normal for empty databases)"
       success "Proceeding with sync..."
     else
