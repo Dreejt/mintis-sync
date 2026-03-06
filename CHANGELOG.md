@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.9] - 2026-03-06
+
+### Fixed
+- Multisite domain-update toont geen `Error: Table 'wp_blogs' doesn't exist` meer op single-site installaties — tabel wordt nu eerst gecontroleerd voor de query wordt uitgevoerd
+- Bij crash toont het script nu welke stappen nog niet voltooid zijn, inclusief het exacte commando om alleen de assets alsnog te syncen
+
+## [1.5.8] - 2026-03-06
+
+### Added
+- Post-sync health check: detecteert automatisch of de site na sync reageert
+- Bij 'autoloader' fout toont het script het exacte `composer install` SSH-commando om de site te herstellen
+
+## [1.5.7] - 2026-03-06
+
+### Fixed
+- `search-replace` faalde met "Error locating autoloader" na database-import: WP-CLI probeerde WordPress te laden met de development-URL die net in de database stond. Opgelost met `--url=$FROMSITE` en `--skip-plugins --skip-themes`
+
 ## [1.5.6] - 2026-03-06
 
 ### Security

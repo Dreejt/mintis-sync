@@ -189,20 +189,24 @@ sync_database() {
     success "Database imported"
 
     # Search-replace URLs
-    wp_to_cmd search-replace "$FROMSITE" "$TOSITE" --all-tables-with-prefix
+    # --url=$FROMSITE: WP-CLI weet dat de DB nog dev-URLs heeft na import
+    # --skip-plugins --skip-themes: voorkomt dat plugin/theme-code de bootstrap breekt
+    wp_to_cmd search-replace "$FROMSITE" "$TOSITE" --all-tables-with-prefix --url="$FROMSITE" --skip-plugins --skip-themes
     success "Search-replace completed"
 
-    # Fix multisite domains in wp_blogs and wp_site tables
+    # Fix multisite domains in wp_blogs and wp_site tables (alleen bij multisite)
     local FROMDOM TODOM
     FROMDOM=$(echo "$FROMSITE" | sed -e 's|https\?://||' -e 's|/||g')
     TODOM=$(echo "$TOSITE" | sed -e 's|https\?://||' -e 's|/||g')
-    info "Updating multisite domains from $FROMDOM to $TODOM..."
-    wp_to_cmd db query "UPDATE wp_blogs SET domain = '$TODOM' WHERE domain = '$FROMDOM';" --url="$TOSITE" 2>/dev/null || true
-    wp_to_cmd db query "UPDATE wp_site SET domain = '$TODOM' WHERE domain = '$FROMDOM';" --url="$TOSITE" 2>/dev/null || true
-    success "Multisite domains updated"
+    if wp_to_cmd db tables --url="$TOSITE" --skip-plugins --skip-themes 2>/dev/null | grep -q 'wp_blogs'; then
+        info "Multisite gedetecteerd — updating domains from $FROMDOM to $TODOM..."
+        wp_to_cmd db query "UPDATE wp_blogs SET domain = '$TODOM' WHERE domain = '$FROMDOM';" --url="$TOSITE" --skip-plugins --skip-themes 2>/dev/null || true
+        wp_to_cmd db query "UPDATE wp_site SET domain = '$TODOM' WHERE domain = '$FROMDOM';" --url="$TOSITE" --skip-plugins --skip-themes 2>/dev/null || true
+        success "Multisite domains updated"
+    fi
 
     # Flush cache
-    wp_to_cmd cache flush --url="$TOSITE" 2>/dev/null || true
+    wp_to_cmd cache flush --url="$TOSITE" --skip-plugins --skip-themes 2>/dev/null || true
     success "Cache flushed"
 }
 
@@ -383,9 +387,22 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
   };
   availto
 
+  _DB_DONE=false
+  _ASSETS_DONE=false
+
+  # Bij onverwachte crash: toon wat er nog niet gedaan is
+  trap '
+    echo
+    error "Sync werd onderbroken!"
+    [[ "$_DB_DONE" == false && "$SKIP_DB" == false ]] && warning "Database is mogelijk niet volledig gesynchroniseerd"
+    [[ "$_ASSETS_DONE" == false && "$SKIP_ASSETS" == false ]] && warning "Assets (uploads) zijn NIET gesynchroniseerd — voer opnieuw uit met: composer sync $FROM $TO -- --skip-db"
+    echo
+  ' ERR
+
   if [ "$SKIP_DB" = false ]
   then
     sync_database
+    _DB_DONE=true
   fi
 
   if [ "$SKIP_ASSETS" = false ]
@@ -405,13 +422,37 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
       rsync -az --progress "$FROMDIR" "$TODIR" &&
       success "Assets synced"
     fi
+    _ASSETS_DONE=true
   fi
+
+  trap - ERR
 
   # Slack notification when sync direction is up or horizontal
   # if [[ $DIR != "down"* ]]; then
   #   USER="$(git config user.name)"
   #   curl -X POST -H "Content-type: application/json" --data "{\"attachments\":[{\"fallback\": \"\",\"color\":\"#36a64f\",\"text\":\"🔄 Sync from ${FROMSITE} to ${TOSITE} by ${USER} complete \"}],\"channel\":\"#site\"}" https://hooks.slack.com/services/xx/xx/xx
   # fi
+
+  # Post-sync health check
+  echo
+  info "Checking if $TO site is up..."
+  _health_output=$(wp_to_cmd option get blogname --skip-plugins --skip-themes 2>&1) || true
+  if echo "$_health_output" | grep -qi "autoloader\|composer install"; then
+    warning "Site geeft 'autoloader' fout — composer install is nodig op de server"
+    info "Voer dit uit om de site te herstellen:"
+    echo
+    if [[ "$TO" == "staging" ]]; then
+      echo "  ssh ${SERVER_USER}@${SERVER_IP} 'cd ${SERVER_BASE_PATH}/${STAGING_DOMAIN} && composer install --no-dev --optimize-autoloader'"
+    elif [[ "$TO" == "production" ]]; then
+      echo "  ssh ${SERVER_USER}@${SERVER_IP} 'cd ${SERVER_BASE_PATH}/${PROD_DOMAIN} && composer install --no-dev --optimize-autoloader'"
+    fi
+    echo
+  elif echo "$_health_output" | grep -qi "error\|command not found"; then
+    warning "Site reageert niet zoals verwacht na sync — controleer handmatig: $TOSITE"
+  else
+    success "Site is bereikbaar en WordPress reageert correct"
+  fi
+
   echo
   success "Sync from $FROM to $TO complete"
   echo
