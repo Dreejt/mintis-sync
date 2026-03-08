@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.0] - 2026-03-08
+
+### Added
+- Plugin management: configure which plugins to activate/deactivate per environment after sync via `.sync` arrays (`PLUGINS_ACTIVATE_ON_PRODUCTION`, `PLUGINS_DEACTIVATE_ON_DEVELOPMENT`, etc.) — missing plugins are silently skipped, never fatal
+- `.DS_Store` cleanup before rsync: macOS artefacts are removed from the local uploads directory before syncing to prevent them ending up on the server
+- `--command-only` block now also shows plugin management commands
+
+## [1.6.0] - 2026-03-08
+
+### Added
+- Maintenance mode: automatically activated on the target environment before sync, deactivated after — prevents visitors from seeing a half-synced site
+- Numbered step progress: output now shows `[1/6] Connecting...` through `[6/6] Post-sync checks` so you always know where you are
+- `--command-only` flag: shows all WP-CLI and rsync commands that would be executed without running anything — useful for auditing and documentation
+- Post-sync: `wp core verify-checksums` to verify WordPress core file integrity after sync
+- Post-sync: `curl --head` HTTP check to verify the target site returns 200/301/302
+- ERR trap now automatically deactivates maintenance mode if the sync crashes mid-way
+
 ## [1.5.9] - 2026-03-06
 
 ### Fixed
