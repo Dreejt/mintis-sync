@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.3] - 2026-03-09
+
+### Changed
+- Backupbestandsnamen hebben nu het formaat `staging-backup-2026-03-09_133314.sql` (leesbare datum, duidelijke omgeving)
+- Remote backup is nu fataal: als die mislukt wordt de sync afgebroken met duidelijke foutmelding en tip over schrijfrechten
+- Feedback-teksten van backupstappen zijn Nederlandstalig en vermelden expliciet de omgeving en het pad
+
+## [1.8.2] - 2026-03-09
+
+### Added
+- Remote database backup: bij sync naar staging of production wordt nu ook een backup aangemaakt op de server zelf in `backups/` — niet fataal, lokale backup blijft altijd beschikbaar
+
 ## [1.8.1] - 2026-03-09
 
 ### Fixed

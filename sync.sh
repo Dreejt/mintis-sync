@@ -15,11 +15,11 @@ if [[ "$SCRIPT_DIR" == */vendor/* ]]; then
 fi
 
 # Color definitions (inspired by Trellis)
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+RED=$'\033[0;31m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[1;33m'
+BLUE=$'\033[0;34m'
+NC=$'\033[0m' # No Color
 BOLD=$(tput bold 2>/dev/null || echo '')
 NORMAL=$(tput sgr0 2>/dev/null || echo '')
 
@@ -284,22 +284,42 @@ manage_plugins() {
 # Database sync with backup, import, search-replace, and multisite fix
 sync_database() {
     # Create timestamped backup of target database
+    local timestamp
+    timestamp=$(date +%Y-%m-%d_%H%M%S)
     local backup_dir="$PROJECT_ROOT/backups"
-    local backup_file="$backup_dir/${TO}-$(date +%Y%m%d-%H%M%S).sql"
+    local backup_file="$backup_dir/${TO}-backup-${timestamp}.sql"
     mkdir -p "$backup_dir"
-    info "Backing up $TO database before sync..."
+    info "Lokale backup maken van ${TO}-database..."
     if wp_to_cmd db export --default-character-set=utf8mb4 - > "$backup_file" 2>/dev/null; then
         if [ -s "$backup_file" ]; then
-            success "Backup saved to $backup_file ($(du -h "$backup_file" | cut -f1))"
+            success "Lokale backup opgeslagen: $backup_file ($(du -h "$backup_file" | cut -f1))"
         else
             rm -f "$backup_file"
-            warning "Target database is empty — no backup needed"
+            warning "${TO}-database is leeg — geen backup nodig"
         fi
     else
         rm -f "$backup_file"
-        error "Backup of $TO database failed — sync aborted"
-        info "Fix the backup issue first, or use --skip-db to skip the database sync"
+        error "Lokale backup van ${TO}-database mislukt — sync afgebroken"
+        info "Los het backup-probleem op, of gebruik --skip-db om de database over te slaan"
         exit 1
+    fi
+
+    # Also create a remote backup on the target server itself
+    if [[ "$TO" == "staging" || "$TO" == "production" ]]; then
+        local to_domain
+        [[ "$TO" == "staging" ]] && to_domain="$STAGING_DOMAIN" || to_domain="$PROD_DOMAIN"
+        local remote_backup_dir="${SERVER_BASE_PATH}/${to_domain}/backups"
+        local remote_backup_file="${remote_backup_dir}/${TO}-backup-${timestamp}.sql"
+        info "Remote backup maken op de ${TO}-server (${to_domain})..."
+        if ssh "${SERVER_USER}@${SERVER_IP}" "mkdir -p '${remote_backup_dir}'" 2>/dev/null && \
+           wp "@${TO}" db export "${remote_backup_file}" 2>/dev/null; then
+            success "Remote backup opgeslagen op ${TO}-server: ${remote_backup_file}"
+        else
+            error "Remote backup op ${TO}-server (${to_domain}) mislukt — sync afgebroken"
+            info "Controleer schrijfrechten op: ${remote_backup_dir}"
+            info "Of gebruik --skip-db om de database-sync over te slaan"
+            exit 1
+        fi
     fi
 
     # Reset target and import source database
