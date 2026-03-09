@@ -240,7 +240,8 @@ deactivate_maintenance_mode() {
 # Configureer via .sync: PLUGINS_ACTIVATE_ON_PRODUCTION=("updraftplus") etc.
 # Niet-bestaande plugins worden overgeslagen — nooit fataal
 manage_plugins() {
-    local env_upper="${TO^^}"
+    local env_upper
+    env_upper=$(echo "$TO" | tr '[:lower:]' '[:upper:]')
     local activate_ref="PLUGINS_ACTIVATE_ON_${env_upper}[@]"
     local deactivate_ref="PLUGINS_DEACTIVATE_ON_${env_upper}[@]"
     local plugins_activate=("${!activate_ref}")
@@ -412,7 +413,7 @@ case "$1-$2" in
 esac
 
 # Plugin management arrays voor de doelomgeving (geladen vanuit .sync config)
-_PM_ENV="${TO^^}"
+_PM_ENV=$(echo "$TO" | tr '[:lower:]' '[:upper:]')
 _PM_AREF="PLUGINS_ACTIVATE_ON_${_PM_ENV}[@]"
 _PM_DREF="PLUGINS_DEACTIVATE_ON_${_PM_ENV}[@]"
 _PM_ACTIVATE=("${!_PM_AREF}")

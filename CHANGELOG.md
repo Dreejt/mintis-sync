@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.1] - 2026-03-09
+
+### Fixed
+- `${TO^^}` bash 4+ uppercase syntax vervangen door `tr '[:lower:]' '[:upper:]'` — crash op macOS (bash 3.2) bij plugin management
+
 ## [1.8.0] - 2026-03-09
 
 ### Added
