@@ -223,6 +223,63 @@ wp_to_cmd() {
     fi
 }
 
+# Maintenance mode helpers
+activate_maintenance_mode() {
+    wp_to_cmd maintenance-mode activate --skip-plugins --skip-themes 2>/dev/null && \
+        success "Maintenance mode geactiveerd op $TO" || \
+        warning "Maintenance mode kon niet worden geactiveerd op $TO — sync gaat door"
+}
+
+deactivate_maintenance_mode() {
+    wp_to_cmd maintenance-mode deactivate --skip-plugins --skip-themes 2>/dev/null && \
+        success "Maintenance mode gedeactiveerd op $TO" || \
+        warning "Maintenance mode kon niet worden gedeactiveerd op $TO — controleer handmatig"
+}
+
+# Plugin management: activate/deactivate plugins gebaseerd op de doelomgeving
+# Configureer via .sync: PLUGINS_ACTIVATE_ON_PRODUCTION=("updraftplus") etc.
+# Niet-bestaande plugins worden overgeslagen — nooit fataal
+manage_plugins() {
+    local env_upper="${TO^^}"
+    local activate_ref="PLUGINS_ACTIVATE_ON_${env_upper}[@]"
+    local deactivate_ref="PLUGINS_DEACTIVATE_ON_${env_upper}[@]"
+    local plugins_activate=("${!activate_ref}")
+    local plugins_deactivate=("${!deactivate_ref}")
+
+    if [[ ${#plugins_activate[@]} -eq 0 && ${#plugins_deactivate[@]} -eq 0 ]]; then
+        return 0
+    fi
+
+    # Haal lijst van geïnstalleerde plugins op — niet fataal als het mislukt
+    local installed_plugins
+    installed_plugins=$(wp_to_cmd plugin list --field=name --skip-plugins --skip-themes 2>/dev/null) || true
+
+    if [[ -z "$installed_plugins" ]]; then
+        warning "Kon plugin-lijst niet ophalen van $TO — plugin management overgeslagen"
+        return 0
+    fi
+
+    for plugin in "${plugins_activate[@]}"; do
+        if echo "$installed_plugins" | grep -qx "$plugin"; then
+            wp_to_cmd plugin activate "$plugin" --skip-plugins --skip-themes 2>/dev/null && \
+                success "Plugin geactiveerd: $plugin" || \
+                warning "Plugin activeren mislukt: $plugin"
+        else
+            warning "Plugin niet gevonden op $TO, overgeslagen: $plugin"
+        fi
+    done
+
+    for plugin in "${plugins_deactivate[@]}"; do
+        if echo "$installed_plugins" | grep -qx "$plugin"; then
+            wp_to_cmd plugin deactivate "$plugin" --skip-plugins --skip-themes 2>/dev/null && \
+                success "Plugin gedeactiveerd: $plugin" || \
+                warning "Plugin deactiveren mislukt: $plugin"
+        else
+            warning "Plugin niet gevonden op $TO, overgeslagen: $plugin"
+        fi
+    done
+}
+
 # Database sync with backup, import, search-replace, and multisite fix
 sync_database() {
     # Create timestamped backup of target database
@@ -292,6 +349,7 @@ LOCAL=false
 SKIP_DB=false
 SKIP_ASSETS=false
 DRY_RUN=false
+COMMAND_ONLY=false
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -316,6 +374,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --dry-run)
       DRY_RUN=true
+      shift
+      ;;
+    --command-only)
+      COMMAND_ONLY=true
       shift
       ;;
     --*)
@@ -346,8 +408,15 @@ case "$1-$2" in
   development-staging)    DIR="up ⬆️ "            FROMSITE=$DEVSITE;  FROMDIR=$DEVDIR;  TOSITE=$STAGSITE; TODIR=$STAGDIR; ;;
   production-staging)     DIR="horizontally ↔️ ";  FROMSITE=$PRODSITE; FROMDIR=$PRODDIR; TOSITE=$STAGSITE; TODIR=$STAGDIR; ;;
   staging-production)     DIR="horizontally ↔️ ";  FROMSITE=$STAGSITE; FROMDIR=$STAGDIR; TOSITE=$PRODSITE; TODIR=$PRODDIR; ;;
-  *) echo "usage: $0 [[--skip-db] [--skip-assets] [--local] [--dry-run]] production development | staging development | development staging | development production | staging production | production staging" && exit 1 ;;
+  *) echo "usage: $0 [[--skip-db] [--skip-assets] [--local] [--dry-run] [--command-only]] production development | staging development | development staging | development production | staging production | production staging" && exit 1 ;;
 esac
+
+# Plugin management arrays voor de doelomgeving (geladen vanuit .sync config)
+_PM_ENV="${TO^^}"
+_PM_AREF="PLUGINS_ACTIVATE_ON_${_PM_ENV}[@]"
+_PM_DREF="PLUGINS_DEACTIVATE_ON_${_PM_ENV}[@]"
+_PM_ACTIVATE=("${!_PM_AREF}")
+_PM_DEACTIVATE=("${!_PM_DREF}")
 
 if [ "$SKIP_DB" = false ]
 then
@@ -363,6 +432,45 @@ if [ "$SKIP_DB" = true ] && [ "$SKIP_ASSETS" = true ]
 then
   echo "Nothing to synchronize."
   exit;
+fi
+
+# Command-only mode: toon commando's en exit zonder bevestigingsprompt
+if [[ "$COMMAND_ONLY" == true ]]; then
+  echo
+  info "Command-only mode — this would execute:"
+  echo
+  if [[ "$SKIP_DB" == false ]]; then
+    echo "  ${BOLD}[DB Backup & Sync]${NORMAL}"
+    echo "    wp @${TO} maintenance-mode activate --skip-plugins --skip-themes"
+    echo "    wp @${TO} db export --default-character-set=utf8mb4 - > backups/${TO}-\$(date +%Y%m%d-%H%M%S).sql"
+    echo "    wp @${TO} db reset --yes"
+    echo "    wp @${FROM} db export --default-character-set=utf8mb4 - | wp @${TO} db import -"
+    echo "    wp @${TO} search-replace \"${FROMSITE}\" \"${TOSITE}\" --all-tables-with-prefix --url=\"${FROMSITE}\" --skip-plugins --skip-themes"
+    echo "    wp @${TO} cache flush --url=\"${TOSITE}\" --skip-plugins --skip-themes"
+    echo "    wp @${TO} maintenance-mode deactivate --skip-plugins --skip-themes"
+    echo
+  fi
+  if [[ "$SKIP_ASSETS" == false ]]; then
+    echo "  ${BOLD}[Assets Sync]${NORMAL}"
+    echo "    rsync -az --progress \"${FROMDIR}\" \"${TODIR}\""
+    echo
+  fi
+  if [[ ${#_PM_ACTIVATE[@]} -gt 0 || ${#_PM_DEACTIVATE[@]} -gt 0 ]]; then
+    echo "  ${BOLD}[Plugin Management op ${TO}]${NORMAL}"
+    for _p in "${_PM_ACTIVATE[@]}"; do
+      echo "    wp @${TO} plugin activate $_p --skip-plugins --skip-themes"
+    done
+    for _p in "${_PM_DEACTIVATE[@]}"; do
+      echo "    wp @${TO} plugin deactivate $_p --skip-plugins --skip-themes"
+    done
+    echo
+  fi
+  echo "  ${BOLD}[Post-sync checks]${NORMAL}"
+  echo "    wp @${TO} option get blogname --skip-plugins --skip-themes"
+  echo "    wp @${TO} core verify-checksums --skip-plugins --skip-themes"
+  echo "    curl --silent --head --max-time 10 \"${TOSITE}\""
+  echo
+  exit 0
 fi
 
 echo
@@ -410,7 +518,32 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
   cd "$PROJECT_ROOT" &&
   echo
 
+  # Stappen en statusvariabelen bijhouden
+  _DB_DONE=false
+  _ASSETS_DONE=false
+  _MAINT_ACTIVE=false
+  TOTAL_STEPS=4  # connect + maint-on + maint-off + post-sync checks
+  [[ "$SKIP_DB" == false ]] && TOTAL_STEPS=$((TOTAL_STEPS + 1))
+  [[ "$SKIP_ASSETS" == false ]] && TOTAL_STEPS=$((TOTAL_STEPS + 1))
+  [[ ${#_PM_ACTIVATE[@]} -gt 0 || ${#_PM_DEACTIVATE[@]} -gt 0 ]] && TOTAL_STEPS=$((TOTAL_STEPS + 1))
+  _STEP=0
+  step() { _STEP=$((_STEP + 1)); info "[${_STEP}/${TOTAL_STEPS}] $1"; }
+
+  # Bij onverwachte crash: toon wat er nog niet gedaan is en deactiveer maintenance
+  trap '
+    echo
+    error "Sync werd onderbroken!"
+    [[ "$_DB_DONE" == false && "$SKIP_DB" == false ]] && warning "Database is mogelijk niet volledig gesynchroniseerd"
+    [[ "$_ASSETS_DONE" == false && "$SKIP_ASSETS" == false ]] && warning "Assets (uploads) zijn NIET gesynchroniseerd — voer opnieuw uit met: composer sync $FROM $TO -- --skip-db"
+    if [[ "$_MAINT_ACTIVE" == true ]]; then
+      warning "Maintenance mode deactiveren na fout..."
+      wp_to_cmd maintenance-mode deactivate --skip-plugins --skip-themes 2>/dev/null || true
+    fi
+    echo
+  ' ERR
+
   # Make sure both environments are available before we continue
+  step "Verbinding controleren ($FROM → $TO)..."
   availfrom() {
     local AVAILFROM
 
@@ -457,27 +590,22 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
   };
   availto
 
-  _DB_DONE=false
-  _ASSETS_DONE=false
-
-  # Bij onverwachte crash: toon wat er nog niet gedaan is
-  trap '
-    echo
-    error "Sync werd onderbroken!"
-    [[ "$_DB_DONE" == false && "$SKIP_DB" == false ]] && warning "Database is mogelijk niet volledig gesynchroniseerd"
-    [[ "$_ASSETS_DONE" == false && "$SKIP_ASSETS" == false ]] && warning "Assets (uploads) zijn NIET gesynchroniseerd — voer opnieuw uit met: composer sync $FROM $TO -- --skip-db"
-    echo
-  ' ERR
+  step "Maintenance mode activeren op $TO..."
+  activate_maintenance_mode
+  _MAINT_ACTIVE=true
 
   if [ "$SKIP_DB" = false ]
   then
+    step "Database synchroniseren ($FROM → $TO)..."
     sync_database
     _DB_DONE=true
   fi
 
   if [ "$SKIP_ASSETS" = false ]
   then
-  info "Syncing assets..."
+    step "Assets synchroniseren ($FROM → $TO)..."
+    # Verwijder .DS_Store bestanden vóór rsync (macOS artefacten horen niet op server)
+    find "${PROJECT_ROOT}/web/app/uploads/" -name ".DS_Store" -delete 2>/dev/null || true
     # Sync uploads directory
     chmod -R 755 web/app/uploads/ &&
     if [[ $DIR == "horizontally"* ]]; then
@@ -495,7 +623,17 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     _ASSETS_DONE=true
   fi
 
+  # Plugin management: plugins activeren/deactiveren op de doelomgeving
+  if [[ ${#_PM_ACTIVATE[@]} -gt 0 || ${#_PM_DEACTIVATE[@]} -gt 0 ]]; then
+    step "Plugin management op $TO..."
+    manage_plugins
+  fi
+
   trap - ERR
+
+  step "Maintenance mode deactiveren op $TO..."
+  deactivate_maintenance_mode
+  _MAINT_ACTIVE=false
 
   # Slack notification when sync direction is up or horizontal
   # if [[ $DIR != "down"* ]]; then
@@ -503,9 +641,11 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
   #   curl -X POST -H "Content-type: application/json" --data "{\"attachments\":[{\"fallback\": \"\",\"color\":\"#36a64f\",\"text\":\"🔄 Sync from ${FROMSITE} to ${TOSITE} by ${USER} complete \"}],\"channel\":\"#site\"}" https://hooks.slack.com/services/xx/xx/xx
   # fi
 
-  # Post-sync health check
+  step "Post-sync controles ($TO)..."
   echo
-  info "Checking if $TO site is up..."
+
+  # WordPress health check via WP-CLI
+  info "WordPress bereikbaarheid controleren..."
   _health_output=$(wp_to_cmd option get blogname --skip-plugins --skip-themes 2>&1) || true
   if echo "$_health_output" | grep -qi "autoloader\|composer install"; then
     warning "Site geeft 'autoloader' fout — composer install is nodig op de server"
@@ -520,7 +660,29 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
   elif echo "$_health_output" | grep -qi "error\|command not found"; then
     warning "Site reageert niet zoals verwacht na sync — controleer handmatig: $TOSITE"
   else
-    success "Site is bereikbaar en WordPress reageert correct"
+    success "WordPress reageert correct op $TO"
+  fi
+
+  # WordPress core bestandsintegriteit controleren
+  info "WordPress core bestandsintegriteit controleren..."
+  _checksums_output=$(wp_to_cmd core verify-checksums --skip-plugins --skip-themes 2>&1) || true
+  if echo "$_checksums_output" | grep -qi "Error\|failed\|invalid\|doesn't verify"; then
+    warning "Core bestandsintegriteit kon niet worden geverifieerd — controleer handmatig"
+  else
+    success "WordPress core bestanden zijn intact"
+  fi
+
+  # HTTP bereikbaarheidscheck
+  if command -v curl &>/dev/null; then
+    info "HTTP bereikbaarheid controleren..."
+    _http_status=$(curl --silent --head --max-time 10 "$TOSITE" 2>/dev/null | grep -i "^HTTP" | tail -1) || true
+    if echo "$_http_status" | grep -qE "^HTTP.* (200|301|302)"; then
+      success "Site is bereikbaar: $_http_status"
+    elif [[ -n "$_http_status" ]]; then
+      warning "Site geeft onverwachte HTTP status: $_http_status"
+    else
+      warning "Site niet bereikbaar via HTTP — controleer handmatig: $TOSITE"
+    fi
   fi
 
   echo

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+	<meta charset="utf-8"/>
+</head>
+<body>
+
+<h1 id="changelog">Changelog</h1>
+
+<p>All notable changes to this project will be documented in this file.</p>
+
+<p>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</p>
+
+<h2 id="1.6.0-2026-03-09">[1.6.0] - 2026&#8211;03&#8211;09</h2>
+
+<h3 id="added">Added</h3>
+
+<ul>
+<li><code>--help</code> en <code>-h</code> flags tonen nu uitgebreide help met alle beschikbare sync-richtingen</li>
+<li><code>help</code> en <code>list</code> commando&#8217;s tonen hetzelfde overzicht</li>
+<li>Help-functie toont kleurgecodeerde veiligheid-indicatoren voor elke sync-richting</li>
+<li>Voorbeelden en composer shortcuts toegevoegd aan help-output</li>
+<li>README.md bijgewerkt met help-commando documentatie</li>
+</ul>
+
+<hr />
+
+<h2 id="1.7.0-2026-03-08">[1.7.0] - 2026&#8211;03&#8211;08</h2>
+
+<h3 id="added">Added</h3>
+
+<ul>
+<li>Plugin management: configure which plugins to activate/deactivate per environment after sync via <code>.sync</code> arrays (<code>PLUGINS_ACTIVATE_ON_PRODUCTION</code>, <code>PLUGINS_DEACTIVATE_ON_DEVELOPMENT</code>, etc.) — missing plugins are silently skipped, never fatal</li>
+<li><code>.DS_Store</code> cleanup before rsync: macOS artefacts are removed from the local uploads directory before syncing to prevent them ending up on the server</li>
+<li><code>--command-only</code> block now also shows plugin management commands</li>
+</ul>
+
+<h2 id="1.6.0-2026-03-08">[1.6.0] - 2026&#8211;03&#8211;08</h2>
+
+<h3 id="added">Added</h3>
+
+<ul>
+<li>Maintenance mode: automatically activated on the target environment before sync, deactivated after — prevents visitors from seeing a half-synced site</li>
+<li>Numbered step progress: output now shows <code>[1/6] Connecting...</code> through <code>[6/6] Post-sync checks</code> so you always know where you are</li>
+<li><code>--command-only</code> flag: shows all WP-CLI and rsync commands that would be executed without running anything — useful for auditing and documentation</li>
+<li>Post-sync: <code>wp core verify-checksums</code> to verify WordPress core file integrity after sync</li>
+<li>Post-sync: <code>curl --head</code> HTTP check to verify the target site returns 200/301/302</li>
+<li>ERR trap now automatically deactivates maintenance mode if the sync crashes mid-way</li>
+</ul>
+
+<blockquote>
+<blockquote>
+<blockquote>
+<blockquote>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>ab18807aa87f2e9973d72d60157d07b1cb4ccf4e</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</blockquote>
+</blockquote>
+</blockquote>
+</blockquote>
+
+<h2 id="1.5.9-2026-03-06">[1.5.9] - 2026&#8211;03&#8211;06</h2>
+
+<h3 id="fixed">Fixed</h3>
+
+<ul>
+<li>Multisite domain-update toont geen <code>Error: Table 'wp_blogs' doesn't exist</code> meer op single-site installaties — tabel wordt nu eerst gecontroleerd voor de query wordt uitgevoerd</li>
+<li>Bij crash toont het script nu welke stappen nog niet voltooid zijn, inclusief het exacte commando om alleen de assets alsnog te syncen</li>
+</ul>
+
+<h2 id="1.5.8-2026-03-06">[1.5.8] - 2026&#8211;03&#8211;06</h2>
+
+<h3 id="added">Added</h3>
+
+<ul>
+<li>Post-sync health check: detecteert automatisch of de site na sync reageert</li>
+<li>Bij &#8216;autoloader&#8217; fout toont het script het exacte <code>composer install</code> SSH-commando om de site te herstellen</li>
+</ul>
+
+<h2 id="1.5.7-2026-03-06">[1.5.7] - 2026&#8211;03&#8211;06</h2>
+
+<h3 id="fixed">Fixed</h3>
+
+<ul>
+<li><code>search-replace</code> faalde met &#8220;Error locating autoloader&#8221; na database-import: WP-CLI probeerde WordPress te laden met de development-URL die net in de database stond. Opgelost met <code>--url=$FROMSITE</code> en <code>--skip-plugins --skip-themes</code></li>
+</ul>
+
+<h2 id="1.5.6-2026-03-06">[1.5.6] - 2026&#8211;03&#8211;06</h2>
+
+<h3 id="security">Security</h3>
+
+<ul>
+<li>Alle <code>read</code> prompts lezen nu van <code>/dev/tty</code> — piping van stdin kan bevestigingen niet meer omzeilen (<code>echo &quot;y&quot; | composer sync staging production</code> werkt niet meer)</li>
+<li>Sync naar production geblokkeerd als <code>PROD_DOMAIN</code> leeg of niet ingesteld is in <code>.env</code></li>
+</ul>
+
+<h2 id="1.5.5-2026-03-06">[1.5.5] - 2026&#8211;03&#8211;06</h2>
+
+<h3 id="changed">Changed</h3>
+
+<ul>
+<li>Composer shortcuts hernoemd naar expliciete richtingsnamen (<code>sync:production-development</code> etc.)</li>
+<li><code>composer sync production development</code> werkt nu direct als vrije syntax</li>
+<li>README: gebruik-sectie herschreven met vrije syntax en shortcuts</li>
+</ul>
+
+<h2 id="1.5.4-2026-03-06">[1.5.4] - 2026&#8211;03&#8211;06</h2>
+
+<h3 id="added">Added</h3>
+
+<ul>
+<li>Alle 6 sync-richtingen als composer scripts (<code>sync:up-prod</code>, <code>sync:prod-to-stage</code>, <code>sync:stage-to-prod</code>) in mintis-26 en klaasjangeertsema</li>
+</ul>
+
+<h3 id="changed">Changed</h3>
+
+<ul>
+<li>Productie-beveiliging: vereist nu het typen van de exacte domeinnaam (<code>PROD_DOMAIN</code>) i.p.v. het generieke woord &#8216;production&#8217; — onmogelijk per ongeluk te bevestigen</li>
+<li>README: gebruik-sectie volledig herschreven met alle 6 richtingen en uitleg beveiliging</li>
+</ul>
+
+<h2 id="1.5.3-2026-03-06">[1.5.3] - 2026&#8211;03&#8211;06</h2>
+
+<h3 id="changed">Changed</h3>
+
+<ul>
+<li>README: alle zes sync-richtingen gedocumenteerd met overzichtstabel en voorbeelden</li>
+</ul>
+
+<h2 id="1.5.2-2026-03-06">[1.5.2] - 2026&#8211;03&#8211;06</h2>
+
+<h3 id="added">Added</h3>
+
+<ul>
+<li><strong>Auto-update check</strong> — waarschuwing bij verouderde versie (max 1× per dag, gecached in <code>.sync-update-check</code>)</li>
+<li><strong><code>CLAUDE.md</code></strong> — context voor AI-assistenten met release-workflow en conventies</li>
+<li><strong>GitHub Action</strong> (<code>.github/workflows/release.yml</code>) — automatische git tag op basis van versie in <code>CHANGELOG.md</code>; geen handmatige tags meer nodig</li>
+</ul>
+
+<h3 id="changed">Changed</h3>
+
+<ul>
+<li><code>SCRIPT_VERSION</code> wordt nu automatisch gelezen uit <code>vendor/composer/installed.json</code> — nooit meer handmatig bijwerken</li>
+</ul>
+
+<h3 id="fixed">Fixed</h3>
+
+<ul>
+<li>Backup-fout blokkeert nu de sync (was: waarschuwing en doorgaan)</li>
+<li>Betere foutmelding wanneer WP-CLI niet aanwezig is op de remote server (<code>command not found</code> wordt nu herkend)</li>
+</ul>
+
+<h2 id="1.5.1-2026-02-16">[1.5.1] - 2026&#8211;02&#8211;16</h2>
+
+<h3 id="fixed">Fixed</h3>
+
+<ul>
+<li>Path resolution for Composer wrapper exec (not a symlink but a wrapper script)</li>
+<li>Detect vendor path by checking SCRIPT_DIR pattern instead of symlink check</li>
+</ul>
+
+<h2 id="1.5.0-2026-02-16">[1.5.0] - 2026&#8211;02&#8211;16</h2>
+
+<h3 id="added">Added</h3>
+
+<ul>
+<li><strong>Composer package support</strong> — install via <code>composer require dreejt/mintis-sync</code></li>
+<li><code>composer.json</code> with bin entries for <code>sync.sh</code> and <code>setup-wp-cli.php</code></li>
+<li>Smart path resolution: works from <code>scripts/</code>, <code>vendor/bin/</code>, and <code>vendor/dreejt/mintis-sync/</code></li>
+</ul>
+
+<h3 id="changed">Changed</h3>
+
+<ul>
+<li>README updated for Composer-first workflow</li>
+<li>Version bumped to 1.5.0</li>
+</ul>
+
+<h2 id="1.4.0-2026-02-11">[1.4.0] - 2026&#8211;02&#8211;11</h2>
+
+<h3 id="added">Added</h3>
+
+<ul>
+<li><strong>Database backup before sync</strong> — timestamped <code>.sql</code> backup saved to <code>backups/</code> before resetting target DB</li>
+<li><strong><code>set -eo pipefail</code></strong> — script now stops immediately on errors instead of silently continuing</li>
+<li><strong><code>--dry-run</code> mode</strong> — preview what would be synced without making changes</li>
+<li><strong>Production safety check</strong> — requires typing &#8216;production&#8217; to confirm when syncing TO production</li>
+<li><strong><code>wp_from_cmd</code> / <code>wp_to_cmd</code> helpers</strong> — transparent local vs remote WP-CLI command routing</li>
+</ul>
+
+<h3 id="fixed">Fixed</h3>
+
+<ul>
+<li>Removed duplicate <code>bold</code>/<code>normal</code> variable definitions (now uses <code>BOLD</code>/<code>NORMAL</code> consistently)</li>
+<li>Database import failure now shows backup file location for recovery</li>
+</ul>
+
+<h3 id="removed">Removed</h3>
+
+<ul>
+<li>Unused <code>spinner()</code> function (dead code)</li>
+<li>3x copy-pasted DB sync logic — replaced with single <code>sync_database()</code> function</li>
+</ul>
+
+<h2 id="1.3.0-2025-01-xx">[1.3.0] - 2025&#8211;01-XX</h2>
+
+<h3 id="addedinspiredbytrellis">Added (Inspired by Trellis)</h3>
+
+<ul>
+<li><strong>Color-coded status feedback</strong> with green/red/yellow/blue symbols</li>
+<li><strong>Pre-flight validation</strong> checks for WP-CLI, rsync, and required .env variables</li>
+<li><strong>Better error messages</strong> with automatic troubleshooting hints</li>
+<li><strong>Progress spinners</strong> for long-running operations</li>
+<li><strong>Optional config file</strong> (.sync) for project-specific defaults</li>
+<li>Helper functions: <code>success()</code>, <code>error()</code>, <code>warning()</code>, <code>info()</code></li>
+</ul>
+
+<h3 id="improved">Improved</h3>
+
+<ul>
+<li>Error messages now include actionable troubleshooting steps</li>
+<li>Validates all requirements before starting sync</li>
+<li>Clearer visual feedback during sync process</li>
+<li>Better structured output with consistent formatting</li>
+<li><strong>setup-wp-cli.php now protects existing custom wp-cli.yml files</strong></li>
+<li>Added <code>--force</code> flag to setup-wp-cli.php for automated workflows</li>
+</ul>
+
+<h3 id="changed">Changed</h3>
+
+<ul>
+<li>Version bumped to 1.3.0</li>
+<li>Updated README with new features and better documentation</li>
+</ul>
+
+<h2 id="1.0.0-2026-01-12">[1.0.0] - 2026&#8211;01&#8211;12</h2>
+
+<h3 id="added">Added</h3>
+
+<ul>
+<li>Initial release</li>
+<li>Database sync with automatic search-replace</li>
+<li>Assets (uploads) sync via rsync</li>
+<li>Multisite support (wp_blogs &amp; wp_site domain updates)</li>
+<li>SSH-based remote sync</li>
+<li>Skip options (&#8211;skip-db, &#8211;skip-assets)</li>
+<li>Auto-generated wp-cli.yml from .env</li>
+<li>Cache flushing after database sync</li>
+</ul>
+
+<h3 id="enhancedfromroots.iooriginal">Enhanced from Roots.io original</h3>
+
+<ul>
+<li>Multisite domain updates</li>
+<li>Better .env integration</li>
+<li>Improved error handling</li>
+<li>Silent fallback for single-site installations</li>
+<li>Cache flushing</li>
+</ul>
+
+</body>
+</html>
+

@@ -16,3 +16,15 @@ LOCAL=false
 # Optional: Backup database before sync
 # BACKUP_DB=true
 # BACKUP_DIR="$PROJECT_ROOT/backups"
+
+# Optional: Plugin management per omgeving
+# Plugins die niet bestaan worden automatisch overgeslagen — nooit fataal
+#
+# PLUGINS_ACTIVATE_ON_DEVELOPMENT=("wp-mail-smtp")
+# PLUGINS_DEACTIVATE_ON_DEVELOPMENT=("updraftplus" "nginx-helper" "redis-cache")
+#
+# PLUGINS_ACTIVATE_ON_STAGING=("wp-mail-smtp" "nginx-helper" "redis-cache")
+# PLUGINS_DEACTIVATE_ON_STAGING=("updraftplus")
+#
+# PLUGINS_ACTIVATE_ON_PRODUCTION=("wp-mail-smtp" "updraftplus" "nginx-helper" "redis-cache")
+# PLUGINS_DEACTIVATE_ON_PRODUCTION=()
