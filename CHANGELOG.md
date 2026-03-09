@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-03-09
+
+### Added
+- `--help` en `-h` flags tonen nu uitgebreide help met alle beschikbare sync-richtingen
+- `help` en `list` commando's tonen hetzelfde overzicht
+- Help-functie toont kleurgecodeerde veiligheid-indicatoren voor elke sync-richting
+- Voorbeelden en composer shortcuts toegevoegd aan help-output
+- README.md bijgewerkt met help-commando documentatie
+
 ## [1.5.9] - 2026-03-06
 
 ### Fixed

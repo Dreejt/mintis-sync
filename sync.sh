@@ -35,6 +35,71 @@ error() { echo -e "${RED}[${ERROR}]${NC} $1" >&2; }
 warning() { echo -e "${YELLOW}[${WARNING}]${NC} $1"; }
 info() { echo -e "${BLUE}[${INFO}]${NC} $1"; }
 
+# Show help and available sync directions
+show_help() {
+    cat << EOF
+${BOLD}Mintis Sync${NORMAL} v${SCRIPT_VERSION}
+Sync database and uploads between Bedrock WordPress environments.
+
+${BOLD}USAGE${NORMAL}
+  sync.sh [OPTIONS] <FROM> <TO>
+  composer sync <FROM> <TO> [-- OPTIONS]
+
+${BOLD}ENVIRONMENTS${NORMAL}
+  production      Production environment
+  staging         Staging environment
+  development     Development environment (local)
+
+${BOLD}AVAILABLE SYNC DIRECTIONS${NORMAL}
+  ${GREEN}production development${NC}    ⬇️  Veilig  (pull from production to local)
+  ${GREEN}staging development${NC}       ⬇️  Veilig  (pull from staging to local)
+  ${GREEN}development staging${NC}       ⬆️  Veilig  (push from local to staging)
+  ${YELLOW}development production${NC}    ⬆️  ⚠️  Vereist bevestiging (push to production!)
+  ${GREEN}production staging${NC}        ↔️  Veilig  (sync production to staging)
+  ${YELLOW}staging production${NC}        ↔️  ⚠️  Vereist bevestiging (overwrite production!)
+
+${BOLD}OPTIONS${NORMAL}
+  --skip-db         Skip database sync (only sync uploads)
+  --skip-assets     Skip uploads sync (only sync database)
+  --dry-run         Preview changes without executing
+  --local           Use local rsync (no remote copy)
+  --help, -h        Show this help message
+
+${BOLD}EXAMPLES${NORMAL}
+  # Pull production database and uploads to local
+  composer sync production development
+
+  # Push local changes to staging
+  composer sync development staging
+
+  # Pull production database only (skip uploads)
+  composer sync production development -- --skip-assets
+
+  # Preview what would happen
+  composer sync staging development -- --dry-run
+
+  # Sync production to staging (e.g., after hotfix)
+  composer sync production staging
+
+${BOLD}COMPOSER SHORTCUTS${NORMAL}
+  composer sync:production-development
+  composer sync:staging-development
+  composer sync:development-staging
+  composer sync:development-production
+  composer sync:production-staging
+  composer sync:staging-production
+
+${BOLD}VEREISTEN${NORMAL}
+  - WP-CLI (local + remote)
+  - rsync
+  - SSH access to servers
+  - Configured .env file
+
+For more info: https://github.com/Dreejt/mintis-sync
+EOF
+    exit 0
+}
+
 # Get project root - works from scripts/, vendor/bin/, or vendor/dreejt/mintis-sync/
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -231,6 +296,12 @@ POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case $1 in
+    --help|-h|help)
+      show_help
+      ;;
+    list)
+      show_help
+      ;;
     --skip-db)
       SKIP_DB=true
       shift
@@ -262,8 +333,7 @@ set -- "${POSITIONAL_ARGS[@]}"
 
 if [ $# != 2 ]
 then
-  echo "Usage: $0 [[--skip-db] [--skip-assets] [--local] [--dry-run]] [ENV_FROM] [ENV_TO]"
-exit;
+  show_help
 fi
 
 FROM=$1

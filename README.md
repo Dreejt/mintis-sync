@@ -61,6 +61,17 @@ php vendor/dreejt/mintis-sync/setup-wp-cli.php
 
 ## Gebruik
 
+### Help & overzicht
+
+```bash
+# Toon alle beschikbare sync-richtingen
+composer sync help
+composer sync -- --help
+
+# Of direct via script
+./vendor/dreejt/mintis-sync/sync.sh --help
+```
+
 ### Vrije syntax
 
 ```bash
