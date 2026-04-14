@@ -446,7 +446,7 @@ fi
 
 if [ "$SKIP_ASSETS" = false ]
 then
-  ASSETS_MESSAGE=" - sync ${BOLD}$DIR${NORMAL} from $FROM ($FROMSITE)?"
+  ASSETS_MESSAGE=" - sync assets ${BOLD}$DIR${NORMAL} from $FROM ($FROMSITE) to $TO ($TOSITE)?"
 fi
 
 if [ "$SKIP_DB" = true ] && [ "$SKIP_ASSETS" = true ]
