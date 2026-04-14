@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.4] - 2026-04-14
+
+### Fixed
+- Horizontal sync (staging↔production) op dezelfde server: detecteert nu of bron- en doelhost identiek zijn en gebruikt lokale rsync in plaats van SSH-naar-zichzelf, wat failde op `Permission denied (publickey)`
+- `--command-only` preview toont nu het juiste commando voor same-server en cross-server horizontal syncs
+
 ## [1.8.3] - 2026-03-09
 
 ### Changed

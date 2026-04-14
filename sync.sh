@@ -473,7 +473,19 @@ if [[ "$COMMAND_ONLY" == true ]]; then
   fi
   if [[ "$SKIP_ASSETS" == false ]]; then
     echo "  ${BOLD}[Assets Sync]${NORMAL}"
-    echo "    rsync -az --progress \"${FROMDIR}\" \"${TODIR}\""
+    if [[ $DIR == "horizontally"* ]]; then
+      _CO_FROMHOST="${FROMDIR%%:*}"
+      _CO_FROMPATH="${FROMDIR#*:}"
+      _CO_TOHOST="${TODIR%%:*}"
+      _CO_TOPATH="${TODIR#*:}"
+      if [[ "$_CO_FROMHOST" == "$_CO_TOHOST" ]]; then
+        echo "    ssh $_CO_FROMHOST \"rsync -a --progress $_CO_FROMPATH $_CO_TOPATH\""
+      else
+        echo "    ssh -o ForwardAgent=yes $_CO_FROMHOST \"rsync -aze 'ssh -o StrictHostKeyChecking=no' --progress $_CO_FROMPATH $_CO_TOHOST:$_CO_TOPATH\""
+      fi
+    else
+      echo "    rsync -az --progress \"${FROMDIR}\" \"${TODIR}\""
+    fi
     echo
   fi
   if [[ ${#_PM_ACTIVATE[@]} -gt 0 || ${#_PM_DEACTIVATE[@]} -gt 0 ]]; then
@@ -635,8 +647,15 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
       [[ $TODIR =~ ^(.*): ]] && TOHOST=${BASH_REMATCH[1]}
       [[ $TODIR =~ ^(.*):(.*)$ ]] && TODIR=${BASH_REMATCH[2]}
 
-      ssh -o ForwardAgent=yes $FROMHOST "rsync -aze 'ssh -o StrictHostKeyChecking=no' --progress $FROMDIR $TOHOST:$TODIR" &&
-      success "Assets synced"
+      if [[ "$FROMHOST" == "$TOHOST" ]]; then
+        # Zelfde server: lokale rsync, geen SSH-naar-zichzelf nodig
+        ssh $FROMHOST "rsync -a --progress $FROMDIR $TODIR" &&
+        success "Assets synced (same server, local copy)"
+      else
+        # Verschillende servers: rsync via SSH met agent forwarding
+        ssh -o ForwardAgent=yes $FROMHOST "rsync -aze 'ssh -o StrictHostKeyChecking=no' --progress $FROMDIR $TOHOST:$TODIR" &&
+        success "Assets synced"
+      fi
     else
       rsync -az --progress "$FROMDIR" "$TODIR" &&
       success "Assets synced"
