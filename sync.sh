@@ -519,14 +519,9 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
       error "PROD_DOMAIN is niet ingesteld in .env — sync naar production geblokkeerd"
       exit 1
     fi
-    echo
-    echo -e "  ${RED}${BOLD}⛔  WAARSCHUWING: je staat op het punt PRODUCTIE te overschrijven${NORMAL}${NC}"
-    echo
-    echo -e "  ${BOLD}Van:${NORMAL}  $FROMSITE"
-    echo -e "  ${RED}${BOLD}Naar: $TOSITE${NORMAL}${NC}"
-    echo
+
     # Dynamische beschrijving op basis van wat er daadwerkelijk gesynchroniseerd wordt
-    local _warn_what=""
+    _warn_what=""
     if [[ "$SKIP_DB" == false && "$SKIP_ASSETS" == false ]]; then
       _warn_what="database en uploads"
     elif [[ "$SKIP_DB" == false ]]; then
@@ -534,6 +529,23 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     else
       _warn_what="uploads"
     fi
+
+    echo
+    if [[ "$SKIP_DB" == false ]]; then
+      # Database wordt overschreven: volledige waarschuwing
+      echo -e "  ${RED}${BOLD}⛔  WAARSCHUWING: je staat op het punt PRODUCTIE te overschrijven${NORMAL}${NC}"
+    else
+      # Alleen uploads: mildere waarschuwing
+      echo -e "  ${YELLOW}${BOLD}⚠️  Let op: je synchroniseert ${_warn_what} naar PRODUCTIE${NORMAL}${NC}"
+    fi
+    echo
+    echo -e "  ${BOLD}Van:${NORMAL}  $FROMSITE"
+    if [[ "$SKIP_DB" == false ]]; then
+      echo -e "  ${RED}${BOLD}Naar: $TOSITE${NORMAL}${NC}"
+    else
+      echo -e "  ${BOLD}Naar:${NORMAL} $TOSITE"
+    fi
+    echo
     echo -e "  ${YELLOW}Dit vervangt de live ${_warn_what}. Dit is onomkeerbaar.${NC}"
     echo
     echo -e "  Typ de productie-domeinnaam om te bevestigen: ${BOLD}${PROD_DOMAIN}${NORMAL}"

@@ -9,6 +9,8 @@ All notable changes to this project will be documented in this file.
 - `--command-only` preview toont nu het juiste commando voor same-server en cross-server horizontal syncs
 - Assets confirmatiebericht toont nu ook het doeldomein (was niet zichtbaar bij `--skip-db`)
 - Productie-waarschuwing toont nu dynamisch wat er overschreven wordt (alleen uploads bij `--skip-db`, alleen database bij `--skip-assets`)
+- Mildere waarschuwing (⚠️) bij uploads-only sync naar productie in plaats van agressieve ⛔-melding
+- Fix crash: `local` keyword buiten functie verwijderd
 
 ## [1.8.3] - 2026-03-09
 
