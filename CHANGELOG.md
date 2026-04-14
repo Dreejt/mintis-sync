@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Horizontal sync (staging↔production) op dezelfde server: detecteert nu of bron- en doelhost identiek zijn en gebruikt lokale rsync in plaats van SSH-naar-zichzelf, wat failde op `Permission denied (publickey)`
 - `--command-only` preview toont nu het juiste commando voor same-server en cross-server horizontal syncs
 - Assets confirmatiebericht toont nu ook het doeldomein (was niet zichtbaar bij `--skip-db`)
+- Productie-waarschuwing toont nu dynamisch wat er overschreven wordt (alleen uploads bij `--skip-db`, alleen database bij `--skip-assets`)
 
 ## [1.8.3] - 2026-03-09
 

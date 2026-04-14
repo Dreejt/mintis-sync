@@ -525,7 +525,16 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     echo -e "  ${BOLD}Van:${NORMAL}  $FROMSITE"
     echo -e "  ${RED}${BOLD}Naar: $TOSITE${NORMAL}${NC}"
     echo
-    echo -e "  ${YELLOW}Dit vervangt de live database en uploads. Dit is onomkeerbaar.${NC}"
+    # Dynamische beschrijving op basis van wat er daadwerkelijk gesynchroniseerd wordt
+    local _warn_what=""
+    if [[ "$SKIP_DB" == false && "$SKIP_ASSETS" == false ]]; then
+      _warn_what="database en uploads"
+    elif [[ "$SKIP_DB" == false ]]; then
+      _warn_what="database"
+    else
+      _warn_what="uploads"
+    fi
+    echo -e "  ${YELLOW}Dit vervangt de live ${_warn_what}. Dit is onomkeerbaar.${NC}"
     echo
     echo -e "  Typ de productie-domeinnaam om te bevestigen: ${BOLD}${PROD_DOMAIN}${NORMAL}"
     read -r -p "  > " confirm_prod < /dev/tty
