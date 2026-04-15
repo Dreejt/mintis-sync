@@ -28,3 +28,6 @@ LOCAL=false
 #
 # PLUGINS_ACTIVATE_ON_PRODUCTION=("wp-mail-smtp" "updraftplus" "nginx-helper" "redis-cache")
 # PLUGINS_DEACTIVATE_ON_PRODUCTION=()
+
+# Optional: Backup rotatie — verwijder lokale SQL-backups ouder dan X dagen (standaard 30)
+# BACKUP_RETENTION_DAYS=30

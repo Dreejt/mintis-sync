@@ -351,6 +351,17 @@ sync_database() {
     # Flush cache
     wp_to_cmd cache flush --url="$TOSITE" --skip-plugins --skip-themes 2>/dev/null || true
     success "Cache flushed"
+
+    # Backup rotatie: verwijder lokale backups ouder dan BACKUP_RETENTION_DAYS (standaard 30)
+    local retention_days="${BACKUP_RETENTION_DAYS:-30}"
+    local old_backups
+    old_backups=$(find "$backup_dir" -name "*.sql" -type f -mtime "+${retention_days}" 2>/dev/null)
+    if [[ -n "$old_backups" ]]; then
+        local count
+        count=$(echo "$old_backups" | wc -l | tr -d ' ')
+        find "$backup_dir" -name "*.sql" -type f -mtime "+${retention_days}" -delete 2>/dev/null
+        success "${count} backup(s) ouder dan ${retention_days} dagen opgeruimd"
+    fi
 }
 
 # Build URLs and paths from .env
@@ -561,9 +572,26 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     echo
     info "Dry-run mode — no changes will be made"
     echo
-    echo "  Would sync:"
-    [[ "$SKIP_DB" == false ]] && echo "    - Database: $FROM → $TO (search-replace $FROMSITE → $TOSITE)"
-    [[ "$SKIP_ASSETS" == false ]] && echo "    - Assets: $FROMDIR → $TODIR"
+    [[ "$SKIP_DB" == false ]] && echo "  Database: $FROM → $TO (search-replace $FROMSITE → $TOSITE)"
+    if [[ "$SKIP_ASSETS" == false ]]; then
+      echo "  Assets: $FROMDIR → $TODIR"
+      echo
+      info "rsync preview (bestanden die zouden veranderen):"
+      echo
+      if [[ $DIR == "horizontally"* ]]; then
+        [[ $FROMDIR =~ ^(.*): ]] && _DR_FROMHOST=${BASH_REMATCH[1]}
+        [[ $FROMDIR =~ ^(.*):(.*)$ ]] && _DR_FROMPATH=${BASH_REMATCH[2]}
+        [[ $TODIR =~ ^(.*): ]] && _DR_TOHOST=${BASH_REMATCH[1]}
+        [[ $TODIR =~ ^(.*):(.*)$ ]] && _DR_TOPATH=${BASH_REMATCH[2]}
+        if [[ "$_DR_FROMHOST" == "$_DR_TOHOST" ]]; then
+          ssh "$_DR_FROMHOST" "rsync -az --dry-run --itemize-changes $_DR_FROMPATH $_DR_TOPATH" 2>/dev/null || warning "rsync preview mislukt"
+        else
+          ssh -o ForwardAgent=yes "$_DR_FROMHOST" "rsync -aze 'ssh -o StrictHostKeyChecking=no' --dry-run --itemize-changes $_DR_FROMPATH $_DR_TOHOST:$_DR_TOPATH" 2>/dev/null || warning "rsync preview mislukt"
+        fi
+      else
+        rsync -az --dry-run --itemize-changes "$FROMDIR" "$TODIR" 2>/dev/null || warning "rsync preview mislukt"
+      fi
+    fi
     echo
     exit 0
   fi

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.0] - 2026-04-15
+
+### Changed
+- `--dry-run` draait nu een echte `rsync --dry-run --itemize-changes` en toont per bestand wat er zou veranderen, in plaats van alleen een tekst-samenvatting
+
+### Added
+- Automatische backup rotatie: lokale SQL-backups ouder dan 30 dagen worden na elke database-sync opgeruimd (configureerbaar via `BACKUP_RETENTION_DAYS` in `.sync`)
+
 ## [1.8.4] - 2026-04-14
 
 ### Fixed
