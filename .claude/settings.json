@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(grep -n 'wp \"@\\\\$' /Users/tjeerd/Sites/mintis-sync/sync.sh)",
-      "Bash(ssh -o ConnectTimeout=10 -o BatchMode=yes -v ploi@78.47.200.163 \"echo ok\")"
+      "Bash(ssh -o ConnectTimeout=10 -o BatchMode=yes -v ploi@78.47.200.163 \"echo ok\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git tag *)",
+      "Bash(git push *)"
     ],
     "additionalDirectories": [
       "/Users/tjeerd/Sites/ruimtevormers"
