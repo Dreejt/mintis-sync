@@ -14,26 +14,6 @@ if [[ "$SCRIPT_DIR" == */vendor/* ]]; then
     fi
 fi
 
-# Cross-platform timeout: gtimeout (macOS/Homebrew), timeout (Linux), or pure-bash fallback
-if command -v gtimeout &>/dev/null; then
-  _timeout() { gtimeout "$@"; }
-elif command -v timeout &>/dev/null; then
-  _timeout() { timeout "$@"; }
-else
-  _timeout() {
-    local _secs=$1; shift
-    "$@" &
-    local _pid=$!
-    ( sleep "$_secs" && kill "$_pid" 2>/dev/null ) &
-    local _watcher=$!
-    wait "$_pid" 2>/dev/null
-    local _exit=$?
-    kill "$_watcher" 2>/dev/null
-    wait "$_watcher" 2>/dev/null
-    return $_exit
-  }
-fi
-
 # Color definitions (inspired by Trellis)
 RED=$'\033[0;31m'
 GREEN=$'\033[0;32m'
@@ -646,22 +626,14 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 
   # Make sure both environments are available before we continue
   step "Verbinding controleren ($FROM → $TO)..."
+  export WP_CLI_SSH_ARGS="-o ConnectTimeout=15 -o BatchMode=yes"
   availfrom() {
     local AVAILFROM
 
     if [[ "$LOCAL" = true && $FROM == "development" ]]; then
       AVAILFROM=$(wp option get home 2>&1) || true
     else
-      local _AVAIL_EXIT
-      AVAILFROM=$(_timeout 30 wp "@$FROM" option get home 2>&1); _AVAIL_EXIT=$?; true
-      if [[ $_AVAIL_EXIT -eq 124 ]]; then
-        error "Connection to $FROM timed out after 30 seconds"
-        info "Troubleshooting tips:"
-        echo "  - Check if wp-cli.yml is configured correctly"
-        echo "  - Verify SSH access: ssh $SERVER_USER@$SERVER_IP"
-        echo "  - Ensure WP-CLI is installed on remote server"
-        exit 1
-      fi
+      AVAILFROM=$(wp "@$FROM" option get home 2>&1) || true
     fi
     if [[ $AVAILFROM == *"command not found"* ]]; then
       error "WP-CLI is not installed on the $FROM server"
@@ -685,16 +657,7 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     if [[ "$LOCAL" = true && $TO == "development" ]]; then
       AVAILTO=$(wp option get home --url="$TOSITE" 2>&1) || true
     else
-      local _AVAILTO_EXIT
-      AVAILTO=$(_timeout 30 wp "@$TO" option get home 2>&1); _AVAILTO_EXIT=$?; true
-      if [[ $_AVAILTO_EXIT -eq 124 ]]; then
-        error "Connection to $TO timed out after 30 seconds"
-        info "Troubleshooting tips:"
-        echo "  - Check if wp-cli.yml is configured correctly"
-        echo "  - Verify SSH access: ssh $SERVER_USER@$SERVER_IP"
-        echo "  - Ensure WP-CLI is installed on remote server"
-        exit 1
-      fi
+      AVAILTO=$(wp "@$TO" option get home 2>&1) || true
     fi
 
     if [[ $AVAILTO == *"command not found"* ]]; then
