@@ -176,19 +176,17 @@ validate_requirements() {
         info "Install WP-CLI: https://wp-cli.org/#installing"
         has_errors=true
     else
-        # Detect oude WP-CLI op moderne PHP — print PHP-deprecations naar stdout
-        # die de SQL-stream tijdens db-sync zouden vervuilen.
+        # Waarschuw bij WP-CLI <2.12 op PHP >=8.4: bekend issue waarbij PHP
+        # deprecation warnings de db-sync SQL-stream kunnen vervuilen.
         local _wpcli_ver _php_ver
-        _wpcli_ver=$(wp --version 2>/dev/null | awk '{print $2}')
+        _wpcli_ver=$(wp --version 2>/dev/null | grep -i '^WP-CLI ' | awk '{print $2}')
         _php_ver=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null)
-        if [[ -n "$_wpcli_ver" && -n "$_php_ver" ]]; then
-            # Vergelijk: WP-CLI <2.12 op PHP >=8.4 = bekend probleem
-            if [[ "$(printf '%s\n' "2.12" "$_wpcli_ver" | sort -V | head -1)" != "2.12" ]] \
-               && [[ "$(printf '%s\n' "8.4" "$_php_ver" | sort -V | head -1)" != "8.4" ]]; then
-                warning "WP-CLI $_wpcli_ver op PHP $_php_ver kan PHP deprecation warnings naar stdout schrijven"
-                info "Dat kan de SQL-stream tijdens db-sync corrumperen. Aanbevolen: voer 'wp cli update' uit"
-                info "(of 'brew upgrade wp-cli' als je via Homebrew installeerde) — vereist >=2.12 voor PHP 8.4"
-            fi
+        if [[ -n "$_wpcli_ver" && -n "$_php_ver" ]] \
+           && [[ "$(printf '%s\n2.12\n' "$_wpcli_ver" | sort -V | head -1)" != "2.12" ]] \
+           && [[ "$(printf '%s\n8.4\n' "$_php_ver" | sort -V | head -1)" == "8.4" ]]; then
+            warning "WP-CLI $_wpcli_ver op PHP $_php_ver — update aanbevolen"
+            info "Voer uit: 'wp cli update' (of 'brew upgrade wp-cli')"
+            info "Reden: oude WP-CLI op PHP 8.4+ kan PHP-warnings naar stdout schrijven en zo de db-sync corrumperen"
         fi
     fi
     
@@ -356,50 +354,35 @@ sync_database() {
         fi
     fi
 
-    # Reset target en importeer FROM via pipe (Roots-patroon).
-    # WP_CLI_PHP_ARGS bovenaan dit script onderdrukt PHP-warnings, dus de
-    # SQL-stream blijft schoon. PIPESTATUS vangt fouten aan beide kanten.
+    # Reset target and import source database via pipe.
+    # WP_CLI_PHP_ARGS hierboven voorkomt dat PHP-warnings de SQL-stream
+    # contamineren. Stderr van beide kanten gaat naar stderr (zichtbaar voor
+    # de gebruiker), niet naar stdout (= de SQL-pijp).
     info "Syncing database..."
-    local _restore_prefix="wp"
-    [[ "$TO" != "development" || "$LOCAL" != true ]] && _restore_prefix="wp @$TO"
-    local _restore_hint="$_restore_prefix db reset --yes && $_restore_prefix db import \"$backup_file\""
-
-    # Probe: peek de eerste regel van de export om vroeg te zien of er
-    # PHP-deprecation warnings of andere ruis in stdout zitten — dit is een
-    # bekende failure mode (WP-CLI <2.12 op PHP >=8.4) die anders pas zichtbaar
-    # wordt nadat de target al gereset is.
-    local _probe
-    _probe=$(wp_from_cmd db export --default-character-set=utf8mb4 - 2>/dev/null | head -1)
-    if [[ -n "$_probe" && "$_probe" != "-- MySQL dump"* ]]; then
-        error "Export-stream van $FROM bevat geen geldige MySQL header"
-        info "Eerste regel: $_probe"
-        info "Bekende oorzaak: oude WP-CLI op moderne PHP (deprecation warnings vervuilen stdout)"
-        info "Voer uit: 'wp cli update' (of 'brew upgrade wp-cli') op zowel lokale als $FROM-machine"
-        info "Target database ($TO) is NIET aangeraakt"
-        exit 1
-    fi
-
     wp_to_cmd db reset --yes
     set +e
     wp_from_cmd db export --default-character-set=utf8mb4 - | wp_to_cmd db import -
     local _pipe_status=("${PIPESTATUS[@]}")
     set -e
+    # Bepaal het juiste herstel-commando (lokaal of via @alias)
+    local _restore_prefix="wp"
+    [[ "$TO" != "development" || "$LOCAL" != true ]] && _restore_prefix="wp @$TO"
     if [[ ${_pipe_status[0]} -ne 0 || ${_pipe_status[1]} -ne 0 ]]; then
         error "Database sync mislukt (export exit=${_pipe_status[0]}, import exit=${_pipe_status[1]})"
         info "Backup van $TO vóór sync: $backup_file"
-        info "Herstellen: $_restore_hint"
+        info "Herstellen: $_restore_prefix db reset --yes && $_restore_prefix db import \"$backup_file\""
         info "Tip: voer 'wp cli update' uit op zowel lokale als remote WP-CLI als je hier vaker last van hebt"
         exit 1
     fi
 
-    # Post-import sanity check: zijn er options-tabellen?
-    # (vangt edge cases af waarbij de pipe slaagt maar de DB toch leeg is)
+    # Post-import sanity check: zijn er WordPress-tabellen?
+    # (de pipe kan slagen terwijl de daadwerkelijke data corrupt of incompleet is)
     local _table_count
     _table_count=$(wp_to_cmd db query "SHOW TABLES LIKE '%options';" --skip-column-names 2>/dev/null | wc -l | tr -d ' ')
     if [[ "$_table_count" -lt 1 ]]; then
         error "Sync leek te slagen maar er zijn geen options-tabellen in $TO!"
         info "Backup beschikbaar: $backup_file"
-        info "Herstellen: $_restore_hint"
+        info "Herstellen: $_restore_prefix db reset --yes && $_restore_prefix db import \"$backup_file\""
         exit 1
     fi
     success "Database imported (sanity check: $_table_count options-tabel(len) gevonden)"
