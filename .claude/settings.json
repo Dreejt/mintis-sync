@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "/Users/tjeerd/Sites/ruimtevormers"
+    ],
+    "allow": [
+      "Bash(grep -n 'wp \"@\\\\$' /Users/tjeerd/Sites/mintis-sync/sync.sh)"
+    ]
+  }
+}

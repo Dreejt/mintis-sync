@@ -632,7 +632,16 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     if [[ "$LOCAL" = true && $FROM == "development" ]]; then
       AVAILFROM=$(wp option get home 2>&1) || true
     else
-      AVAILFROM=$(wp "@$FROM" option get home 2>&1) || true
+      local _AVAIL_EXIT
+      AVAILFROM=$(timeout 30 wp "@$FROM" option get home 2>&1); _AVAIL_EXIT=$?; true
+      if [[ $_AVAIL_EXIT -eq 124 ]]; then
+        error "Connection to $FROM timed out after 30 seconds"
+        info "Troubleshooting tips:"
+        echo "  - Check if wp-cli.yml is configured correctly"
+        echo "  - Verify SSH access: ssh $SERVER_USER@$SERVER_IP"
+        echo "  - Ensure WP-CLI is installed on remote server"
+        exit 1
+      fi
     fi
     if [[ $AVAILFROM == *"command not found"* ]]; then
       error "WP-CLI is not installed on the $FROM server"
@@ -656,7 +665,16 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     if [[ "$LOCAL" = true && $TO == "development" ]]; then
       AVAILTO=$(wp option get home --url="$TOSITE" 2>&1) || true
     else
-      AVAILTO=$(wp "@$TO" option get home 2>&1) || true
+      local _AVAILTO_EXIT
+      AVAILTO=$(timeout 30 wp "@$TO" option get home 2>&1); _AVAILTO_EXIT=$?; true
+      if [[ $_AVAILTO_EXIT -eq 124 ]]; then
+        error "Connection to $TO timed out after 30 seconds"
+        info "Troubleshooting tips:"
+        echo "  - Check if wp-cli.yml is configured correctly"
+        echo "  - Verify SSH access: ssh $SERVER_USER@$SERVER_IP"
+        echo "  - Ensure WP-CLI is installed on remote server"
+        exit 1
+      fi
     fi
 
     if [[ $AVAILTO == *"command not found"* ]]; then
