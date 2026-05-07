@@ -6,7 +6,18 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git tag *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(ssh ploi@78.47.200.163 \"php -r 'echo ini_get\\(\\\\\"display_errors\\\\\"\\); echo \\\\\" | \\\\\"; echo ini_get\\(\\\\\"error_reporting\\\\\"\\);'\")",
+      "Bash(php -r 'echo \"display_errors=\".ini_get\\(\"display_errors\"\\).\"\\\\n\"; echo \"error_reporting=\".ini_get\\(\"error_reporting\"\\).\"\\\\n\";')",
+      "Bash(git checkout *)",
+      "Bash(curl -s https://raw.githubusercontent.com/roots/scripts/master/sync.sh)",
+      "Bash(curl -sL \"https://api.github.com/search/code?q=repo:roots/scripts+filename:sync.sh\")",
+      "Bash(curl -s \"https://api.github.com/repos/roots/scripts\")",
+      "Bash(curl -sL \"https://gist.githubusercontent.com/retlehs/5e879e2eb2ed0c1b1d898a8a40d2b9e4/raw\")",
+      "Bash(curl -sL \"https://discourse.roots.io/raw/13633\")",
+      "Bash(curl -sL \"https://raw.githubusercontent.com/roots/trellis/master/roles/deploy/files/sync.sh\")",
+      "Bash(curl -sL \"https://discourse.roots.io/t/syncing-trellis-bedrock-environments/8865.json\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d['post_stream']['posts'][0]['cooked'][:3000]\\)\")"
     ],
     "additionalDirectories": [
       "/Users/tjeerd/Sites/ruimtevormers"
