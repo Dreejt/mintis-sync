@@ -185,7 +185,8 @@ validate_requirements() {
            && [[ "$(printf '%s\n2.12\n' "$_wpcli_ver" | sort -V | head -1)" != "2.12" ]] \
            && [[ "$(printf '%s\n8.4\n' "$_php_ver" | sort -V | head -1)" == "8.4" ]]; then
             warning "WP-CLI $_wpcli_ver op PHP $_php_ver — update aanbevolen"
-            info "Voer uit: 'wp cli update' (of 'brew upgrade wp-cli')"
+            info "Bij Homebrew-installaties: 'brew upgrade wp-cli'"
+            info "Anders: 'wp cli update' (werkt niet bij Homebrew-installaties)"
             info "Reden: oude WP-CLI op PHP 8.4+ kan PHP-warnings naar stdout schrijven en zo de db-sync corrumperen"
         fi
     fi
@@ -371,7 +372,7 @@ sync_database() {
         error "Database sync mislukt (export exit=${_pipe_status[0]}, import exit=${_pipe_status[1]})"
         info "Backup van $TO vóór sync: $backup_file"
         info "Herstellen: $_restore_prefix db reset --yes && $_restore_prefix db import \"$backup_file\""
-        info "Tip: voer 'wp cli update' uit op zowel lokale als remote WP-CLI als je hier vaker last van hebt"
+        info "Tip: update WP-CLI ('brew upgrade wp-cli' of 'wp cli update') als je hier vaker last van hebt"
         exit 1
     fi
 
