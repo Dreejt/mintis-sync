@@ -334,9 +334,13 @@ sync_database() {
     fi
 
     # Reset target and import source database
+    # Filter PHP deprecated/notice/warning output uit de SQL-stream — die kan
+    # vanaf een remote WP-CLI installatie via stdout meekomen en de import slopen.
     info "Syncing database..."
     wp_to_cmd db reset --yes
-    if ! wp_from_cmd db export --default-character-set=utf8mb4 - | wp_to_cmd db import -; then
+    if ! wp_from_cmd db export --default-character-set=utf8mb4 - 2>/dev/null \
+        | grep -Ev '^(PHP )?(Deprecated|Warning|Notice|Strict Standards|Fatal error):' \
+        | wp_to_cmd db import -; then
         error "Database import failed! Backup available at: $backup_file"
         exit 1
     fi
