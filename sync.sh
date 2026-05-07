@@ -217,6 +217,14 @@ validate_requirements
 # snel falen i.p.v. eindeloos te hangen.
 export WP_CLI_SSH_ARGS="-o ConnectTimeout=15 -o BatchMode=yes"
 
+# Onderdruk PHP deprecation/notice/warning output van WP-CLI zelf.
+# Reden: tijdens `wp db export -` (pipe naar stdout) zou een PHP-warning de
+# SQL-stream contamineren en de import kapot maken — wat catastrofaal is
+# bij sync naar production. Dit beïnvloedt ALLEEN WP-CLI's eigen PHP-proces;
+# het laat de PHP-instellingen van WordPress zelf ongemoeid.
+# E_ERROR (1) | E_PARSE (4) | E_CORE_ERROR (16) | E_COMPILE_ERROR (64) = 85
+export WP_CLI_PHP_ARGS="-d display_errors=0 -d error_reporting=85"
+
 # WP-CLI command helpers (handle local vs remote transparently)
 wp_from_cmd() {
     if [[ "$LOCAL" = true && "$FROM" == "development" ]]; then
@@ -333,18 +341,38 @@ sync_database() {
         fi
     fi
 
-    # Reset target and import source database
-    # Filter PHP deprecated/notice/warning output uit de SQL-stream — die kan
-    # vanaf een remote WP-CLI installatie via stdout meekomen en de import slopen.
+    # Reset target and import source database via pipe.
+    # WP_CLI_PHP_ARGS hierboven voorkomt dat PHP-warnings de SQL-stream
+    # contamineren. Stderr van beide kanten gaat naar stderr (zichtbaar voor
+    # de gebruiker), niet naar stdout (= de SQL-pijp).
     info "Syncing database..."
     wp_to_cmd db reset --yes
-    if ! wp_from_cmd db export --default-character-set=utf8mb4 - 2>/dev/null \
-        | grep -Ev '^(PHP )?(Deprecated|Warning|Notice|Strict Standards|Fatal error):' \
-        | wp_to_cmd db import -; then
-        error "Database import failed! Backup available at: $backup_file"
+    set +e
+    wp_from_cmd db export --default-character-set=utf8mb4 - | wp_to_cmd db import -
+    local _pipe_status=("${PIPESTATUS[@]}")
+    set -e
+    # Bepaal het juiste herstel-commando (lokaal of via @alias)
+    local _restore_prefix="wp"
+    [[ "$TO" != "development" || "$LOCAL" != true ]] && _restore_prefix="wp @$TO"
+    if [[ ${_pipe_status[0]} -ne 0 || ${_pipe_status[1]} -ne 0 ]]; then
+        error "Database sync mislukt (export exit=${_pipe_status[0]}, import exit=${_pipe_status[1]})"
+        info "Backup van $TO vóór sync: $backup_file"
+        info "Herstellen: $_restore_prefix db reset --yes && $_restore_prefix db import \"$backup_file\""
+        info "Tip: voer 'wp cli update' uit op zowel lokale als remote WP-CLI als je hier vaker last van hebt"
         exit 1
     fi
-    success "Database imported"
+
+    # Post-import sanity check: zijn er WordPress-tabellen?
+    # (de pipe kan slagen terwijl de daadwerkelijke data corrupt of incompleet is)
+    local _table_count
+    _table_count=$(wp_to_cmd db query "SHOW TABLES LIKE '%options';" --skip-column-names 2>/dev/null | wc -l | tr -d ' ')
+    if [[ "$_table_count" -lt 1 ]]; then
+        error "Sync leek te slagen maar er zijn geen options-tabellen in $TO!"
+        info "Backup beschikbaar: $backup_file"
+        info "Herstellen: $_restore_prefix db reset --yes && $_restore_prefix db import \"$backup_file\""
+        exit 1
+    fi
+    success "Database imported (sanity check: $_table_count options-tabel(len) gevonden)"
 
     # Search-replace URLs
     # --url=$FROMSITE: WP-CLI weet dat de DB nog dev-URLs heeft na import
