@@ -197,14 +197,25 @@ validate_requirements() {
     if [ ! -f "$PROJECT_ROOT/wp-cli.yml" ]; then
         warning "wp-cli.yml not found at $PROJECT_ROOT/wp-cli.yml"
         info "Run setup-wp-cli.php to generate it from .env"
+    else
+        # Detect incomplete ssh: lines (e.g. "ssh: ploi@" with empty host)
+        if grep -qE '^\s*ssh:\s*[^[:space:]]*@\s*$' "$PROJECT_ROOT/wp-cli.yml"; then
+            error "wp-cli.yml has an ssh: entry with an empty host"
+            info "Likely SERVER_IP is missing in .env. Regenerate with: composer run-script setup-wp-cli"
+            has_errors=true
+        fi
     fi
-    
+
     if [ "$has_errors" = true ]; then
         exit 1
     fi
 }
 
 validate_requirements
+
+# Geef SSH-aanroepen via WP-CLI een ConnectTimeout zodat onbereikbare servers
+# snel falen i.p.v. eindeloos te hangen.
+export WP_CLI_SSH_ARGS="-o ConnectTimeout=15 -o BatchMode=yes"
 
 # WP-CLI command helpers (handle local vs remote transparently)
 wp_from_cmd() {
@@ -626,7 +637,6 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
 
   # Make sure both environments are available before we continue
   step "Verbinding controleren ($FROM → $TO)..."
-  export WP_CLI_SSH_ARGS="-o ConnectTimeout=15 -o BatchMode=yes"
   availfrom() {
     local AVAILFROM
 
