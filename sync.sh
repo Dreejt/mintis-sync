@@ -175,6 +175,21 @@ validate_requirements() {
         error "WP-CLI is not installed"
         info "Install WP-CLI: https://wp-cli.org/#installing"
         has_errors=true
+    else
+        # Detect oude WP-CLI op moderne PHP — print PHP-deprecations naar stdout
+        # die de SQL-stream tijdens db-sync zouden vervuilen.
+        local _wpcli_ver _php_ver
+        _wpcli_ver=$(wp --version 2>/dev/null | awk '{print $2}')
+        _php_ver=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null)
+        if [[ -n "$_wpcli_ver" && -n "$_php_ver" ]]; then
+            # Vergelijk: WP-CLI <2.12 op PHP >=8.4 = bekend probleem
+            if [[ "$(printf '%s\n' "2.12" "$_wpcli_ver" | sort -V | head -1)" != "2.12" ]] \
+               && [[ "$(printf '%s\n' "8.4" "$_php_ver" | sort -V | head -1)" != "8.4" ]]; then
+                warning "WP-CLI $_wpcli_ver op PHP $_php_ver kan PHP deprecation warnings naar stdout schrijven"
+                info "Dat kan de SQL-stream tijdens db-sync corrumperen. Aanbevolen: voer 'wp cli update' uit"
+                info "(of 'brew upgrade wp-cli' als je via Homebrew installeerde) — vereist >=2.12 voor PHP 8.4"
+            fi
+        fi
     fi
     
     # Check if rsync is installed
@@ -348,6 +363,21 @@ sync_database() {
     local _restore_prefix="wp"
     [[ "$TO" != "development" || "$LOCAL" != true ]] && _restore_prefix="wp @$TO"
     local _restore_hint="$_restore_prefix db reset --yes && $_restore_prefix db import \"$backup_file\""
+
+    # Probe: peek de eerste regel van de export om vroeg te zien of er
+    # PHP-deprecation warnings of andere ruis in stdout zitten — dit is een
+    # bekende failure mode (WP-CLI <2.12 op PHP >=8.4) die anders pas zichtbaar
+    # wordt nadat de target al gereset is.
+    local _probe
+    _probe=$(wp_from_cmd db export --default-character-set=utf8mb4 - 2>/dev/null | head -1)
+    if [[ -n "$_probe" && "$_probe" != "-- MySQL dump"* ]]; then
+        error "Export-stream van $FROM bevat geen geldige MySQL header"
+        info "Eerste regel: $_probe"
+        info "Bekende oorzaak: oude WP-CLI op moderne PHP (deprecation warnings vervuilen stdout)"
+        info "Voer uit: 'wp cli update' (of 'brew upgrade wp-cli') op zowel lokale als $FROM-machine"
+        info "Target database ($TO) is NIET aangeraakt"
+        exit 1
+    fi
 
     wp_to_cmd db reset --yes
     set +e
