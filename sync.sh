@@ -14,13 +14,24 @@ if [[ "$SCRIPT_DIR" == */vendor/* ]]; then
     fi
 fi
 
-# Cross-platform timeout: use gtimeout (macOS/Homebrew coreutils) or timeout (Linux/GNU)
+# Cross-platform timeout: gtimeout (macOS/Homebrew), timeout (Linux), or pure-bash fallback
 if command -v gtimeout &>/dev/null; then
   _timeout() { gtimeout "$@"; }
 elif command -v timeout &>/dev/null; then
   _timeout() { timeout "$@"; }
 else
-  _timeout() { shift; "$@"; }  # no timeout available, run directly
+  _timeout() {
+    local _secs=$1; shift
+    "$@" &
+    local _pid=$!
+    ( sleep "$_secs" && kill "$_pid" 2>/dev/null ) &
+    local _watcher=$!
+    wait "$_pid" 2>/dev/null
+    local _exit=$?
+    kill "$_watcher" 2>/dev/null
+    wait "$_watcher" 2>/dev/null
+    return $_exit
+  }
 fi
 
 # Color definitions (inspired by Trellis)
