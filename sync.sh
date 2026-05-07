@@ -14,6 +14,15 @@ if [[ "$SCRIPT_DIR" == */vendor/* ]]; then
     fi
 fi
 
+# Cross-platform timeout: use gtimeout (macOS/Homebrew coreutils) or timeout (Linux/GNU)
+if command -v gtimeout &>/dev/null; then
+  _timeout() { gtimeout "$@"; }
+elif command -v timeout &>/dev/null; then
+  _timeout() { timeout "$@"; }
+else
+  _timeout() { shift; "$@"; }  # no timeout available, run directly
+fi
+
 # Color definitions (inspired by Trellis)
 RED=$'\033[0;31m'
 GREEN=$'\033[0;32m'
@@ -633,7 +642,7 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
       AVAILFROM=$(wp option get home 2>&1) || true
     else
       local _AVAIL_EXIT
-      AVAILFROM=$(timeout 30 wp "@$FROM" option get home 2>&1); _AVAIL_EXIT=$?; true
+      AVAILFROM=$(_timeout 30 wp "@$FROM" option get home 2>&1); _AVAIL_EXIT=$?; true
       if [[ $_AVAIL_EXIT -eq 124 ]]; then
         error "Connection to $FROM timed out after 30 seconds"
         info "Troubleshooting tips:"
@@ -666,7 +675,7 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
       AVAILTO=$(wp option get home --url="$TOSITE" 2>&1) || true
     else
       local _AVAILTO_EXIT
-      AVAILTO=$(timeout 30 wp "@$TO" option get home 2>&1); _AVAILTO_EXIT=$?; true
+      AVAILTO=$(_timeout 30 wp "@$TO" option get home 2>&1); _AVAILTO_EXIT=$?; true
       if [[ $_AVAILTO_EXIT -eq 124 ]]; then
         error "Connection to $TO timed out after 30 seconds"
         info "Troubleshooting tips:"
