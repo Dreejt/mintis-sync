@@ -341,87 +341,29 @@ sync_database() {
         fi
     fi
 
-    # Bepaal het juiste herstel-commando (lokaal of via @alias) — gebruikt bij elke faalroute
+    # Reset target en importeer FROM via pipe (Roots-patroon).
+    # WP_CLI_PHP_ARGS bovenaan dit script onderdrukt PHP-warnings, dus de
+    # SQL-stream blijft schoon. PIPESTATUS vangt fouten aan beide kanten.
+    info "Syncing database..."
     local _restore_prefix="wp"
     [[ "$TO" != "development" || "$LOCAL" != true ]] && _restore_prefix="wp @$TO"
     local _restore_hint="$_restore_prefix db reset --yes && $_restore_prefix db import \"$backup_file\""
 
-    # Stap 1: exporteer FROM naar lokaal tempfile (NIET via pipe).
-    # Reden: bij een pipe staat de target al gereset zodra de export crasht.
-    # Door eerst te exporteren+valideren, raken we de target pas aan als we
-    # zeker weten dat we een geldige dump hebben.
-    info "Exporteren $FROM-database naar tempbestand..."
-    local source_dump="$backup_dir/.${FROM}-source-${timestamp}.sql"
-    # Cleanup tempfile bij elke return-route uit deze functie
-    trap 'rm -f "$source_dump"' RETURN
-    # Gebruik stdout-redirect (niet path-arg) zodat het bestand altijd lokaal
-    # belandt — ook als FROM een remote alias is.
-    # WP_CLI_PHP_ARGS hierboven voorkomt dat PHP-warnings de stream contamineren.
-    if ! wp_from_cmd db export --default-character-set=utf8mb4 - > "$source_dump"; then
-        error "Export van $FROM-database mislukt"
-        info "Target database ($TO) is NIET aangeraakt"
-        exit 1
-    fi
-
-    # Stap 2: valideer de dump — header, footer, en non-trivial size.
-    if [ ! -s "$source_dump" ]; then
-        error "Export van $FROM-database is leeg"
-        info "Target database ($TO) is NIET aangeraakt"
-        exit 1
-    fi
-    if ! head -1 "$source_dump" | grep -q '^-- MySQL dump'; then
-        error "Export van $FROM bevat geen geldige MySQL dump-header"
-        info "Eerste regel: $(head -1 "$source_dump")"
-        info "Mogelijke oorzaak: oude WP-CLI versie. Voer uit: wp cli update (op zowel lokaal als remote)"
-        info "Target database ($TO) is NIET aangeraakt"
-        exit 1
-    fi
-    if ! tail -5 "$source_dump" | grep -q '^-- Dump completed'; then
-        error "Export van $FROM is incompleet (geen 'Dump completed' footer)"
-        info "Target database ($TO) is NIET aangeraakt"
-        exit 1
-    fi
-    local dump_size dump_size_bytes
-    dump_size=$(du -h "$source_dump" | cut -f1)
-    dump_size_bytes=$(wc -c < "$source_dump" | tr -d ' ')
-    if [[ "$dump_size_bytes" -lt 1024 ]]; then
-        error "Export van $FROM is verdacht klein (<1KB)"
-        info "Target database ($TO) is NIET aangeraakt"
-        exit 1
-    fi
-    success "Export $FROM-database gevalideerd ($dump_size)"
-
-    # Stap 3: nu pas — reset target en importeer
-    info "Importeren in $TO-database..."
     wp_to_cmd db reset --yes
-    if [[ "$TO" == "development" ]]; then
-        # Development is altijd lokaal — direct importeren vanaf lokaal pad
-        if ! wp db import "$source_dump"; then
-            error "Database import op $TO mislukt!"
-            info "Backup van $TO vóór sync: $backup_file"
-            info "Herstellen: $_restore_hint"
-            exit 1
-        fi
-    else
-        # Remote target: kopieer dump naar de server en importeer daar
-        local remote_tmp="/tmp/mintis-sync-${TO}-${timestamp}.sql"
-        info "Dump naar $TO-server kopiëren..."
-        if ! scp -q "$source_dump" "${SERVER_USER}@${SERVER_IP}:${remote_tmp}"; then
-            error "Kon dump niet naar $TO-server kopiëren"
-            warning "Target database is al gereset! Herstellen: $_restore_hint"
-            exit 1
-        fi
-        if ! wp "@$TO" db import "$remote_tmp"; then
-            ssh "${SERVER_USER}@${SERVER_IP}" "rm -f '$remote_tmp'" 2>/dev/null || true
-            error "Database import op $TO mislukt!"
-            info "Backup van $TO vóór sync: $backup_file"
-            info "Herstellen: $_restore_hint"
-            exit 1
-        fi
-        ssh "${SERVER_USER}@${SERVER_IP}" "rm -f '$remote_tmp'" 2>/dev/null || true
+    set +e
+    wp_from_cmd db export --default-character-set=utf8mb4 - | wp_to_cmd db import -
+    local _pipe_status=("${PIPESTATUS[@]}")
+    set -e
+    if [[ ${_pipe_status[0]} -ne 0 || ${_pipe_status[1]} -ne 0 ]]; then
+        error "Database sync mislukt (export exit=${_pipe_status[0]}, import exit=${_pipe_status[1]})"
+        info "Backup van $TO vóór sync: $backup_file"
+        info "Herstellen: $_restore_hint"
+        info "Tip: voer 'wp cli update' uit op zowel lokale als remote WP-CLI als je hier vaker last van hebt"
+        exit 1
     fi
 
-    # Stap 4: post-import sanity check op aanwezigheid van options-tabel
+    # Post-import sanity check: zijn er options-tabellen?
+    # (vangt edge cases af waarbij de pipe slaagt maar de DB toch leeg is)
     local _table_count
     _table_count=$(wp_to_cmd db query "SHOW TABLES LIKE '%options';" --skip-column-names 2>/dev/null | wc -l | tr -d ' ')
     if [[ "$_table_count" -lt 1 ]]; then
